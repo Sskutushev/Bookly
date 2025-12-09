@@ -5,12 +5,12 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 
-import authRoutes from './routes/auth.routes';
-import booksRoutes from './routes/books.routes';
-import userRoutes from './routes/user.routes';
-import paymentRoutes from './routes/payment.routes';
-import favoritesRoutes from './routes/favorites.routes';
-import myBooksRoutes from './routes/my-books.routes';
+import authRoutes from './routes/auth.routes.ts';
+import booksRoutes from './routes/books.routes.ts';
+import userRoutes from './routes/user.routes.ts';
+import paymentRoutes from './routes/payment.routes.ts';
+import favoritesRoutes from './routes/favorites.routes.ts';
+import myBooksRoutes from './routes/my-books.routes.ts';
 
 dotenv.config();
 
