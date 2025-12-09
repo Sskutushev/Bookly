@@ -16,7 +16,6 @@ import { Book } from '@/entities/book/model/types';
 const HomePage: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -26,10 +25,9 @@ const HomePage: React.FC = () => {
 
   // Fetch books with filters
   const { data: books = [], isLoading } = useQuery({
-    queryKey: ['books', selectedGenre, searchQuery],
+    queryKey: ['books', selectedGenre],
     queryFn: () => getBooks({
       genre: selectedGenre !== 'all' ? selectedGenre : undefined,
-      search: searchQuery,
     }),
   });
 
@@ -43,33 +41,8 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark pb-20">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-10 backdrop-blur-md bg-white/80 dark:bg-bg-dark/80 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary-light dark:text-primary-dark">
-            Bookly
-          </div>
-          
-          <div className="flex-1 max-w-md mx-4">
-            <input
-              type="text"
-              placeholder="Найти книгу..."
-              className="w-full px-4 py-2 rounded-button bg-white dark:bg-gray-800 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-            <span className="text-text-primary-light dark:text-text-primary-dark font-medium">
-              {selectedBook?.user?.name?.charAt(0) || 'U'}
-            </span>
-          </div>
-        </div>
-      </header>
-
       {/* Genres Filter */}
-      <div className="container mx-auto px-4 pt-20 pb-4 overflow-x-auto">
+      <div className="container mx-auto px-4 pb-4 overflow-x-auto">
         <div className="flex space-x-3">
           <button
             className={`px-4 py-2 rounded-button whitespace-nowrap ${

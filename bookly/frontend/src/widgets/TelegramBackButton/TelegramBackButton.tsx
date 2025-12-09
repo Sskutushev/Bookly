@@ -7,13 +7,12 @@ const TelegramBackButton: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (!tg) return;
+    if (!tg || !tg.isVersionAtLeast('6.1')) return;
 
     const handleBackButton = () => {
       navigate(-1);
     };
 
-    // Show back button on all pages except home
     if (location.pathname !== '/') {
       tg.BackButton.show();
       tg.BackButton.onClick(handleBackButton);
@@ -22,8 +21,10 @@ const TelegramBackButton: React.FC = () => {
     }
 
     return () => {
-      tg.BackButton.offClick(handleBackButton);
-      tg.BackButton.hide();
+      if (tg && tg.isVersionAtLeast('6.1')) {
+        tg.BackButton.offClick(handleBackButton);
+        tg.BackButton.hide();
+      }
     };
   }, [location.pathname, navigate]);
 

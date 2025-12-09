@@ -6,7 +6,7 @@ const TelegramSettingsButton: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!tg) return;
+    if (!tg || !tg.isVersionAtLeast('6.4')) return;
 
     const handleSettingsButton = () => {
       navigate('/profile');
@@ -16,7 +16,10 @@ const TelegramSettingsButton: React.FC = () => {
     tg.SettingsButton.onClick(handleSettingsButton);
 
     return () => {
-      tg.SettingsButton.offClick(handleSettingsButton);
+      if (tg && tg.isVersionAtLeast('6.4')) {
+        tg.SettingsButton.offClick(handleSettingsButton);
+        tg.SettingsButton.hide();
+      }
     };
   }, [navigate]);
 
