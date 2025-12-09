@@ -11,6 +11,8 @@ export interface Book {
   isFree: boolean;
   pageCount: number;
   genres: Genre[];
+  contentUrl?: string; // Added for the reader
+  progress?: number; // Added for my-books page
   isFavorite?: boolean;
   isPurchased?: boolean;
   user?: {

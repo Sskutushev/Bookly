@@ -4,8 +4,8 @@ import { tg } from './telegram-app';
 
 export const set = (key: string, value: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if (tg?.CloudStorage) {
-      tg.CloudStorage.setItem(key, value, (error) => {
+    if (tg && tg.CloudStorage) {
+      tg.CloudStorage.setItem(key, value, (error: string | null) => {
         if (error) {
           console.error('Error saving to Telegram CloudStorage:', error);
           reject(error);
@@ -18,9 +18,9 @@ export const set = (key: string, value: string): Promise<void> => {
       try {
         localStorage.setItem(key, value);
         resolve();
-      } catch (error) {
-        console.error('Error saving to localStorage:', error);
-        reject(error);
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+        reject(e);
       }
     }
   });
@@ -28,8 +28,8 @@ export const set = (key: string, value: string): Promise<void> => {
 
 export const get = (key: string): Promise<string | null> => {
   return new Promise((resolve, reject) => {
-    if (tg?.CloudStorage) {
-      tg.CloudStorage.getItem(key, (error, value) => {
+    if (tg && tg.CloudStorage) {
+      tg.CloudStorage.getItem(key, (error: string | null, value?: string) => {
         if (error) {
           console.error('Error getting from Telegram CloudStorage:', error);
           reject(error);
@@ -42,9 +42,9 @@ export const get = (key: string): Promise<string | null> => {
       try {
         const value = localStorage.getItem(key);
         resolve(value);
-      } catch (error) {
-        console.error('Error getting from localStorage:', error);
-        reject(error);
+      } catch (e) {
+        console.error('Error getting from localStorage:', e);
+        reject(e);
       }
     }
   });
@@ -52,8 +52,8 @@ export const get = (key: string): Promise<string | null> => {
 
 export const remove = (key: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if (tg?.CloudStorage) {
-      tg.CloudStorage.removeItem(key, (error) => {
+    if (tg && tg.CloudStorage) {
+      tg.CloudStorage.removeItem(key, (error: string | null) => {
         if (error) {
           console.error('Error removing from Telegram CloudStorage:', error);
           reject(error);
@@ -66,9 +66,9 @@ export const remove = (key: string): Promise<void> => {
       try {
         localStorage.removeItem(key);
         resolve();
-      } catch (error) {
-        console.error('Error removing from localStorage:', error);
-        reject(error);
+      } catch (e) {
+        console.error('Error removing from localStorage:', e);
+        reject(e);
       }
     }
   });
@@ -76,8 +76,8 @@ export const remove = (key: string): Promise<void> => {
 
 export const getKeys = (): Promise<string[]> => {
   return new Promise((resolve, reject) => {
-    if (tg?.CloudStorage) {
-      tg.CloudStorage.getKeys((error, keys) => {
+    if (tg && tg.CloudStorage) {
+      tg.CloudStorage.getKeys((error: string | null, keys?: string[]) => {
         if (error) {
           console.error('Error getting keys from Telegram CloudStorage:', error);
           reject(error);
@@ -90,12 +90,15 @@ export const getKeys = (): Promise<string[]> => {
       try {
         const keys: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
-          keys.push(localStorage.key(i) || '');
+          const key = localStorage.key(i);
+          if (key) {
+            keys.push(key);
+          }
         }
         resolve(keys);
-      } catch (error) {
-        console.error('Error getting keys from localStorage:', error);
-        reject(error);
+      } catch (e) {
+        console.error('Error getting keys from localStorage:', e);
+        reject(e);
       }
     }
   });

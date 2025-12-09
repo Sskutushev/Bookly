@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
-import { motion } from 'framer-motion';
 
 // API
 import { 
@@ -14,7 +13,6 @@ import {
 } from '@/features/book-reader/api/reader-api';
 
 // Components
-import { tg } from '@/shared/lib/telegram-app';
 import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
 import SettingsModal from './SettingsModal';
 

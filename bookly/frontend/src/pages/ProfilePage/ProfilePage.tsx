@@ -94,7 +94,7 @@ const ProfilePage: React.FC = () => {
   const handlePasswordUpdate = () => {
     if (newPassword === confirmNewPassword && currentPassword) {
       // In a real app, you would send both current and new passwords
-      updateProfileMutation.mutate({ password: newPassword });
+      // updateProfileMutation.mutate({ password: newPassword });
       setIsEditingPassword(false);
       setCurrentPassword('');
       setNewPassword('');

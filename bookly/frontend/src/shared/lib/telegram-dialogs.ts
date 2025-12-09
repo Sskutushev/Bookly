@@ -4,10 +4,10 @@ import { tg } from './telegram-app';
 
 export const alert = (message: string): Promise<void> => {
   return new Promise((resolve) => {
-    if (tg) {
-      tg.showAlert(message, () => resolve());
+    if (tg && tg.showAlert) {
+      tg.showAlert(message, resolve);
     } else {
-      alert(message); // Fallback to browser alert
+      window.alert(message); // Fallback to browser alert
       resolve();
     }
   });
@@ -15,27 +15,33 @@ export const alert = (message: string): Promise<void> => {
 
 export const confirm = (message: string): Promise<boolean> => {
   return new Promise((resolve) => {
-    if (tg) {
-      tg.showConfirm(message, (result) => resolve(result));
+    if (tg && tg.showConfirm) {
+      tg.showConfirm(message, (ok: boolean) => resolve(ok));
     } else {
       // Fallback to browser confirm
-      resolve(confirm(message));
+      resolve(window.confirm(message));
     }
   });
+};
+
+type PopupButton = {
+  id: string;
+  type?: 'default' | 'ok' | 'close' | 'cancel' | 'destructive';
+  text: string;
 };
 
 export const popup = (params: {
   title: string;
   message: string;
-  buttons: Array<{ id: string; type?: 'default' | 'ok' | 'close' | 'cancel' | 'destructive'; text: string }>;
-}): Promise<string> => {
+  buttons: PopupButton[];
+}): Promise<string | undefined> => {
   return new Promise((resolve) => {
-    if (tg) {
-      tg.showPopup(params, (button_id) => resolve(button_id));
+    if (tg && tg.showPopup) {
+      tg.showPopup(params, (button_id?: string) => resolve(button_id));
     } else {
       // Fallback to browser alert
-      alert(params.message);
-      resolve('ok');
+      window.alert(`${params.title}\n\n${params.message}`);
+      resolve(params.buttons.find(b => b.type === 'ok' || b.type === 'default')?.id);
     }
   });
 };

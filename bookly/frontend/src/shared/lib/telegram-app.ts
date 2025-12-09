@@ -1,6 +1,6 @@
 // src/shared/lib/telegram-app.ts
 
-// More complete types for Telegram WebApp
+// A more complete and accurate set of types for the Telegram WebApp API
 declare global {
   interface Window {
     Telegram: {
@@ -20,13 +20,20 @@ interface IWebAppUser {
   photo_url?: string;
 }
 
-interface IWebApp {
-  initData: string;
-  initDataUnsafe: {
+interface IWebAppInitData {
     query_id?: string;
     user?: IWebAppUser;
-    // ... other fields
-  };
+    receiver?: IWebAppUser;
+    chat?: object; // Replace with a more specific type if needed
+    start_param?: string;
+    can_send_after?: number;
+    auth_date: number;
+    hash: string;
+}
+
+interface IWebApp {
+  initData: string;
+  initDataUnsafe: IWebAppInitData;
   version: string;
   platform: string;
   colorScheme: 'light' | 'dark';
@@ -37,6 +44,7 @@ interface IWebApp {
   headerColor: string;
   backgroundColor: string;
   isClosingConfirmationEnabled: boolean;
+  
   BackButton: {
     isVisible: boolean;
     onClick(cb: () => void): void;
@@ -44,6 +52,7 @@ interface IWebApp {
     show(): void;
     hide(): void;
   };
+  
   MainButton: {
     text: string;
     color: string;
@@ -61,29 +70,49 @@ interface IWebApp {
     showProgress(leaveActive?: boolean): void;
     hideProgress(): void;
   };
-   SettingsButton: {
+
+  SettingsButton: {
     isVisible: boolean;
     onClick(cb: () => void): void;
     offClick(cb: () => void): void;
     show(): void;
     hide(): void;
   };
+
   HapticFeedback: {
     impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
     notificationOccurred(type: 'error' | 'success' | 'warning'): void;
     selectionChanged(): void;
   };
+
+  CloudStorage: {
+      setItem(key: string, value: string, callback?: (error: string | null) => void): void;
+      getItem(key: string, callback: (error: string | null, value: string) => void): void;
+      getItems(keys: string[], callback: (error: string | null, values: Record<string, string>) => void): void;
+      removeItem(key: string, callback?: (error: string | null) => void): void;
+      removeItems(keys: string[], callback?: (error: string | null) => void): void;
+      getKeys(callback: (error: string | null, keys: string[]) => void): void;
+  };
+
   isVersionAtLeast(version: string): boolean;
   setHeaderColor(color: 'bg_color' | 'secondary_bg_color' | string): void;
   setBackgroundColor(color: 'bg_color' | 'secondary_bg_color' | string): void;
+  enableClosingConfirmation(): void;
   ready(): void;
   expand(): void;
-  // ... other methods
+  close(): void;
+
+  onEvent(eventType: 'themeChanged' | 'viewportChanged', callback: () => void): void;
+  offEvent(eventType: 'themeChanged' | 'viewportChanged', callback: () => void): void;
+  
+  showPopup(params: object, callback?: (id?: string) => void): void;
+  showAlert(message: string, callback?: () => void): void;
+  showConfirm(message: string, callback?: (ok: boolean) => void): void;
 }
 
 export const tg = window.Telegram?.WebApp;
 
-function isVersionAtLeast(version: string) {
+function isVersionAtLeast(version: string): boolean {
     if (!tg) return false;
     const parts = tg.version.split('.');
     const required = version.split('.');
@@ -95,7 +124,6 @@ function isVersionAtLeast(version: string) {
     }
     return true;
 }
-
 
 // Initialize Telegram app
 export const initTelegramApp = () => {
@@ -110,8 +138,6 @@ export const initTelegramApp = () => {
   // Set header and background colors safely
   if (isVersionAtLeast('6.1')) {
     tg.setHeaderColor('#8B7FF5');
-  }
-   if (isVersionAtLeast('6.1')) {
     tg.setBackgroundColor(tg.colorScheme === 'dark' ? '#0F0F1E' : '#F8F9FE');
   }
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 // Types
-import { Book } from '../../model/types';
+import { Book } from '../model/types';
 
 interface BookCardProps {
   book: Book;
