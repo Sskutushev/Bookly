@@ -1,5 +1,5 @@
 // Enhanced payment API
-import { axiosInstance } from '../../shared/api/axios-instance';
+import { axiosInstance } from '@/shared/api/axios-instance';
 
 export const createInvoice = async (bookId: string): Promise<string> => {
   const response = await axiosInstance.post('/api/payment/create-invoice', { 

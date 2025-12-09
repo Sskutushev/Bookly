@@ -1,6 +1,6 @@
 // src/entities/book/api/book-api.ts
 
-import { axiosInstance } from '../../../shared/api/axios-instance';
+import { axiosInstance } from '@/shared/api/axios-instance';
 import { Book, Genre, BookFilters } from '../model/types';
 
 export const getBooks = async (filters?: BookFilters): Promise<Book[]> => {
