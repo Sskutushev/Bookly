@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
 // Components
-import BookCard from '@/entities/book/ui/BookCard';
 import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
@@ -24,9 +23,10 @@ const MyBooksPage: React.FC = () => {
 
   // Filter books based on active tab
   const filteredBooks = books.filter(book => {
+    const progress = book.progress || 0;
     if (activeTab === 'all') return true;
-    if (activeTab === 'reading') return book.progress > 0 && book.progress < 100;
-    if (activeTab === 'finished') return book.progress === 100;
+    if (activeTab === 'reading') return progress > 0 && progress < 100;
+    if (activeTab === 'finished') return progress === 100;
     if (activeTab === 'purchased') return book.isPurchased;
     return true;
   });
@@ -117,11 +117,11 @@ const MyBooksPage: React.FC = () => {
                       <div className="h-2 bg-white/80 dark:bg-gray-700/80 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-primary-light dark:bg-primary-dark" 
-                          style={{ width: `${book.progress}%` }}
+                          style={{ width: `${book.progress || 0}%` }}
                         ></div>
                       </div>
                       <div className="text-xs text-white mt-1 text-center">
-                        {book.progress}%
+                        {book.progress || 0}%
                       </div>
                     </div>
                   </div>

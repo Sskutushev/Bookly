@@ -32,15 +32,6 @@ interface Purchase {
   };
 }
 
-interface NotificationSettings {
-  newBooksInGenre: boolean;
-  unfinishedReminder: boolean;
-  specialOffers: boolean;
-  newsAndUpdates: boolean;
-  frequency: string;
-  telegramEnabled: boolean;
-}
-
 const ProfilePage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'purchases' | 'security' | 'notifications' | 'help'>('purchases');
   const [isEditingEmail, setIsEditingEmail] = useState(false);
