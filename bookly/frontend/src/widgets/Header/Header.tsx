@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuthStore } from '@/features/auth/model/auth-store';
+import ThemeToggleButton from '@/features/theme/ui/ThemeToggleButton';
 
 const Header: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
@@ -30,8 +31,9 @@ const Header: React.FC = () => {
           </svg>
         </div>
 
-        {/* Auth Button / User Avatar */}
-        <div>
+        {/* Right side controls */}
+        <div className="flex items-center gap-3">
+          <ThemeToggleButton />
           {isAuthenticated && user ? (
             <div className="w-10 h-10 rounded-full bg-primary-light/20 dark:bg-primary-dark/20 flex items-center justify-center">
               <span className="text-lg font-bold text-primary-light dark:text-primary-dark">

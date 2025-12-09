@@ -21,7 +21,9 @@ import TelegramSettingsButton from '@/widgets/TelegramSettingsButton/TelegramSet
 import { initTelegramApp } from '@/shared/lib/telegram-app';
 
 // Store
-import { useAuthStore } from '../features/auth/model/auth-store'; // Changed to relative path
+import { useAuthStore } from '@/features/auth/model/auth-store';
+import { useThemeStore } from '@/features/theme/useThemeStore';
+
 
 // UI
 import AnimatedPage from '@/shared/ui/AnimatedPage';
@@ -75,25 +77,30 @@ const AnimatedRoutes: React.FC = () => {
 
 const App = () => {
   const { initAuth } = useAuthStore();
+  const { theme, setTheme } = useThemeStore();
 
+  // Effect to initialize the app and sync themes
   useEffect(() => {
-    // Initialize Telegram app
-    const tgData = initTelegramApp();
-    
-    // Apply theme to document
-    if (tgData) {
-      document.documentElement.classList.toggle('dark', tgData.colorScheme === 'dark');
-    }
-    
-    // Initialize auth
     initAuth();
+    const tgData = initTelegramApp();
+    if (tgData?.colorScheme) {
+      setTheme(tgData.colorScheme);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Effect to apply the theme class to the document root
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+  }, [theme]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         {/* App container with flex layout to structure header, main, and footer */}
-        <div className="flex flex-col min-h-screen bg-bg-light dark:bg-bg-dark">
+        <div className="flex flex-col min-h-screen bg-bg-light dark:bg-bg-dark text-text-primary-light dark:text-text-primary-dark">
           <TelegramBackButton />
           <TelegramSettingsButton />
           
