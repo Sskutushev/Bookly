@@ -7,10 +7,10 @@ import {
   updateUserProfile, 
   getUserPurchases,
   updateNotificationSettings 
-} from '../features/auth/api/auth-api';
+} from '@/features/auth/api/auth-api';
 
 // Components
-import TelegramBackButton from '../widgets/TelegramBackButton/TelegramBackButton';
+import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
 
 // Types
 interface UserProfile {

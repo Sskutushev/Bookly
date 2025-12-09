@@ -3,14 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
 // Components
-import BookCard from '../entities/book/ui/BookCard';
-import BookModal from '../widgets/BookModal/BookModal';
+import BookCard from '@/entities/book/ui/BookCard';
+import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
-import { getMyBooks } from '../features/book-reader/api/reader-api';
+import { getMyBooks } from '@/features/book-reader/api/reader-api';
 
 // Types
-import { Book } from '../entities/book/model/types';
+import { Book } from '@/entities/book/model/types';
 
 const MyBooksPage: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);

@@ -5,24 +5,24 @@ import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 
 // Pages
-import HomePage from './pages/HomePage/HomePage';
-import FavoritesPage from './pages/FavoritesPage/FavoritesPage';
-import MyBooksPage from './pages/MyBooksPage/MyBooksPage';
-import ProfilePage from './pages/ProfilePage/ProfilePage';
-import Reader from './features/book-reader/ui/Reader';
+import HomePage from '@/pages/HomePage/HomePage';
+import FavoritesPage from '@/pages/FavoritesPage/FavoritesPage';
+import MyBooksPage from '@/pages/MyBooksPage/MyBooksPage';
+import ProfilePage from '@/pages/ProfilePage/ProfilePage';
+import Reader from '@/features/book-reader/ui/Reader';
 
 // Components
-import TelegramBackButton from './widgets/TelegramBackButton/TelegramBackButton';
-import TelegramSettingsButton from './widgets/TelegramSettingsButton/TelegramSettingsButton';
+import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
+import TelegramSettingsButton from '@/widgets/TelegramSettingsButton/TelegramSettingsButton';
 
 // Lib
-import { initTelegramApp } from './shared/lib/telegram-app';
+import { initTelegramApp } from '@/shared/lib/telegram-app';
 
 // Store
-import { useAuthStore } from './features/auth/model/auth-store';
+import { useAuthStore } from '@/features/auth/model/auth-store';
 
 // UI
-import AnimatedPage from './shared/ui/AnimatedPage';
+import AnimatedPage from '@/shared/ui/AnimatedPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 
 // Lib
-import { set as setStorage, get as getStorage } from '../../shared/lib/telegram-storage';
+import { set as setStorage, get as getStorage } from '@/shared/lib/telegram-storage';
 
 interface SettingsModalProps {
   isOpen: boolean;

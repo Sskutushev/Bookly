@@ -3,14 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
 // Components
-import BookCard from '../entities/book/ui/BookCard';
-import BookModal from '../widgets/BookModal/BookModal';
+import BookCard from '@/entities/book/ui/BookCard';
+import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
-import { getBooks } from '../entities/book/api/book-api';
+import { getBooks } from '@/entities/book/api/book-api';
 
 // Types
-import { Book } from '../entities/book/model/types';
+import { Book } from '@/entities/book/model/types';
 
 const FavoritesPage: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);

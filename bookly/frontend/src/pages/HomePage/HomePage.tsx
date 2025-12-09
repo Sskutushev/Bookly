@@ -4,14 +4,14 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 // Components
-import BookCard from '../../entities/book/ui/BookCard';
-import BookModal from '../../widgets/BookModal/BookModal';
+import BookCard from '@/entities/book/ui/BookCard';
+import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
-import { getBooks, getGenres } from '../../entities/book/api/book-api';
+import { getBooks, getGenres } from '@/entities/book/api/book-api';
 
 // Types
-import { Book } from '../../entities/book/model/types';
+import { Book } from '@/entities/book/model/types';
 
 const HomePage: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);

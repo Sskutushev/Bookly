@@ -5,13 +5,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 // Components
-import PaymentModal from '../../features/payment/ui/PaymentModal';
+import PaymentModal from '@/features/payment/ui/PaymentModal';
 
 // API
-import { addToFavorites, removeFromFavorites } from '../../entities/book/api/book-api';
+import { addToFavorites, removeFromFavorites } from '@/entities/book/api/book-api';
 
 // Types
-import { Book } from '../../entities/book/model/types';
+import { Book } from '@/entities/book/model/types';
 
 interface BookModalProps {
   book: Book;

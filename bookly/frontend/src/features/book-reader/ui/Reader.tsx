@@ -11,15 +11,15 @@ import {
   getBookForReading, 
   getReadingProgress, 
   updateReadingProgress 
-} from '../../api/reader-api';
+} from '@/features/book-reader/api/reader-api';
 
 // Components
-import { tg } from '../../../shared/lib/telegram-app';
-import TelegramBackButton from '../../../widgets/TelegramBackButton/TelegramBackButton';
+import { tg } from '@/shared/lib/telegram-app';
+import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
 import SettingsModal from './SettingsModal';
 
 // Types
-import { Book } from '../../../../entities/book/model/types';
+import { Book } from '@/entities/book/model/types';
 
 // Set up pdfjs worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;

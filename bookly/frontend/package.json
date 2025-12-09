@@ -11,30 +11,31 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "react-router-dom": "^6.20.0",
-    "zustand": "^4.4.0",
+    "@headlessui/react": "^1.7.17",
     "@tanstack/react-query": "^5.0.0",
     "axios": "^1.5.0",
-    "react-hook-form": "^7.45.0",
-    "zod": "^3.22.0",
     "framer-motion": "^10.16.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-hook-form": "^7.45.0",
     "react-hot-toast": "^2.4.1",
     "react-pdf": "^7.7.0",
+    "react-router-dom": "^6.20.0",
     "react-swipeable": "^7.0.1",
-    "@headlessui/react": "^1.7.17"
+    "zod": "^3.22.0",
+    "zustand": "^4.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.3",
-    "typescript": "^5.3.0",
-    "vite": "^4.4.5",
-    "tailwindcss": "^3.4.0",
-    "postcss": "^8.4.27",
-    "autoprefixer": "^10.4.14",
     "@types/react-pdf": "^7.0.0",
-    "vercel": "^32.4.1"
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vercel": "^32.4.1",
+    "vite": "^4.4.5",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

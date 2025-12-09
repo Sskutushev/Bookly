@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tg } from '../lib/telegram-app';
+import { tg } from '@/shared/lib/telegram-app';
 
 const TelegramSettingsButton: React.FC = () => {
   const navigate = useNavigate();

@@ -4,10 +4,10 @@ import { Fragment } from 'react';
 import toast from 'react-hot-toast';
 
 // API
-import { createInvoice } from '../../features/payment/api/payment-api';
+import { createInvoice } from '@/features/payment/api/payment-api';
 
 // Types
-import { Book } from '../../entities/book/model/types';
+import { Book } from '@/entities/book/model/types';
 
 interface PaymentModalProps {
   book: Book;
