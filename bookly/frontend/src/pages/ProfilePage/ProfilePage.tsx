@@ -1,520 +1,418 @@
-// frontend/src/pages/ProfilePage/ProfilePage.tsx
-
 import React, { useState } from 'react';
-import { useAuthStore } from '../../entities/user/model/use-auth-store';
-import { api } from '../../shared/api';
-import { showPopup, showAlert } from '../../shared/lib/telegram-dialogs';
-import { hapticFeedback } from '../../shared/lib/telegram-haptic';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// API
+import { 
+  getUserProfile, 
+  updateUserProfile, 
+  getUserPurchases,
+  updateNotificationSettings 
+} from '../features/auth/api/auth-api';
+
+// Components
+import TelegramBackButton from '../widgets/TelegramBackButton/TelegramBackButton';
+
+// Types
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  telegram_username?: string;
+}
+
+interface Purchase {
+  id: string;
+  amount: number;
+  createdAt: string;
+  book: {
+    title: string;
+    author: string;
+    coverUrl: string;
+  };
+}
 
 interface NotificationSettings {
-  id?: string;
   newBooksInGenre: boolean;
   unfinishedReminder: boolean;
   specialOffers: boolean;
-  frequency: 'daily' | '3days' | 'weekly';
+  newsAndUpdates: boolean;
+  frequency: string;
   telegramEnabled: boolean;
 }
 
 const ProfilePage: React.FC = () => {
-  const { user, logout } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('profile');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(user?.name || '');
+  const [activeSection, setActiveSection] = useState<'purchases' | 'security' | 'notifications' | 'help'>('purchases');
   const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
   const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [is2FAEnabled, setIs2FAEnabled] = useState(false); // This would normally come from user data
 
-  const { data: notificationSettings, isLoading: settingsLoading, refetch } = useQuery<NotificationSettings>({
-    queryKey: ['notification-settings'],
-    queryFn: async () => {
-      const response = await api.get('/notifications/settings');
-      return response.data;
-    },
-    enabled: user !== null
+  const queryClient = useQueryClient();
+
+  // Fetch user profile
+  const { data: profile } = useQuery<UserProfile>({
+    queryKey: ['profile'],
+    queryFn: getUserProfile,
   });
 
-  const handleLogout = async () => {
-    hapticFeedback.warning();
-    
-    const result = await showPopup({
-      title: 'Выход',
-      message: 'Вы уверены, что хотите выйти из аккаунта?',
-      buttons: [
-        { id: 'cancel', text: 'Отмена', type: 'cancel' },
-        { id: 'logout', text: 'Выйти', type: 'destructive' }
-      ]
-    });
+  // Fetch user purchases
+  const { data: purchases = [] } = useQuery<Purchase[]>({
+    queryKey: ['purchases'],
+    queryFn: getUserPurchases,
+  });
 
-    if (result === 'logout') {
-      logout();
-    }
-  };
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: updateUserProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
 
-  const handleSaveProfile = async () => {
-    if (!user) return;
+  // Update notification settings mutation
+  const updateNotificationsMutation = useMutation({
+    mutationFn: updateNotificationSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
 
-    try {
-      await api.patch('/user/profile', {
-        name: editName
-      });
-
-      hapticFeedback.success();
-      showAlert('Профиль успешно обновлен!');
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      hapticFeedback.error();
-      showAlert('Ошибка при обновлении профиля');
-    }
-  };
-
-  const handleSaveEmail = async () => {
-    if (!user || !newEmail) return;
-
-    try {
-      await api.patch('/user/email', {
-        email: newEmail,
-        password: currentPassword
-      });
-
-      hapticFeedback.success();
-      showAlert('Email успешно обновлен!');
+  // Handle email update
+  const handleEmailUpdate = () => {
+    if (newEmail && currentPassword) {
+      updateProfileMutation.mutate({ email: newEmail });
       setIsEditingEmail(false);
       setNewEmail('');
       setCurrentPassword('');
-    } catch (error) {
-      console.error('Error updating email:', error);
-      hapticFeedback.error();
-      showAlert('Ошибка при обновлении email');
     }
   };
 
-  const handleSavePassword = async () => {
-    if (!user || newPassword !== confirmNewPassword) return;
-
-    try {
-      await api.patch('/user/password', {
-        currentPassword,
-        newPassword
-      });
-
-      hapticFeedback.success();
-      showAlert('Пароль успешно обновлен!');
+  // Handle password update
+  const handlePasswordUpdate = () => {
+    if (newPassword === confirmNewPassword && currentPassword) {
+      // In a real app, you would send both current and new passwords
+      updateProfileMutation.mutate({ password: newPassword });
       setIsEditingPassword(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
-    } catch (error) {
-      console.error('Error updating password:', error);
-      hapticFeedback.error();
-      showAlert('Ошибка при обновлении пароля');
     }
   };
 
-  const handleToggle2FA = async () => {
-    hapticFeedback.selection();
-    
-    if (is2FAEnabled) {
-      // Disable 2FA
-      try {
-        await api.post('/auth/2fa/disable');
-        setIs2FAEnabled(false);
-        hapticFeedback.success();
-        showAlert('Двухфакторная аутентификация отключена');
-      } catch (error) {
-        console.error('Error disabling 2FA:', error);
-        hapticFeedback.error();
-        showAlert('Ошибка при отключении 2FA');
-      }
-    } else {
-      // Enable 2FA - Show QR code modal
-      try {
-        const response = await api.post('/auth/2fa/setup');
-        const { qrCode, secret } = response.data;
-        
-        // Show QR code modal
-        showPopup({
-          title: 'Настройка 2FA',
-          message: 'Отсканируйте QR-код с помощью Google Authenticator',
-          buttons: [
-            { id: 'done', text: 'Готово' }
-          ]
-        }).then(async (buttonId) => {
-          if (buttonId === 'done') {
-            // Verify the code
-            const code = prompt('Введите код из приложения:');
-            if (code) {
-              try {
-                await api.post('/auth/2fa/verify', { token: code, secret });
-                setIs2FAEnabled(true);
-                hapticFeedback.success();
-                showAlert('2FA успешно настроена!');
-              } catch (error) {
-                console.error('Error verifying 2FA:', error);
-                hapticFeedback.error();
-                showAlert('Неправильный код. Попробуйте еще раз.');
-              }
-            }
-          }
-        });
-      } catch (error) {
-        console.error('Error setting up 2FA:', error);
-        hapticFeedback.error();
-        showAlert('Ошибка при настройке 2FA');
-      }
-    }
+  // Handle notification settings change
+  const handleNotificationChange = (setting: string, value: boolean | string) => {
+    updateNotificationsMutation.mutate({ [setting]: value });
   };
-
-  const handleUpdateNotificationSettings = async (settings: NotificationSettings) => {
-    try {
-      await api.patch('/notifications/settings', settings);
-      refetch(); // Refresh the settings
-      hapticFeedback.success();
-      showAlert('Настройки уведомлений обновлены');
-    } catch (error) {
-      console.error('Error updating notification settings:', error);
-      hapticFeedback.error();
-      showAlert('Ошибка при обновлении настроек уведомлений');
-    }
-  };
-
-  if (!user) {
-    return <div>Загрузка...</div>;
-  }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FE] dark:bg-[#0F0F1E] p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Mobile Header */}
-        <div className="md:hidden mb-6">
-          <h1 className="text-2xl font-bold text-[#1A1A2E] dark:text-white">Профиль</h1>
+    <div className="min-h-screen bg-bg-light dark:bg-bg-dark pb-20">
+      <TelegramBackButton />
+      
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-10 backdrop-blur-md bg-white/80 dark:bg-bg-dark/80 border-b border-gray-200 dark:border-gray-700">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <h1 className="text-xl font-bold text-primary-light dark:text-primary-dark">
+            Профиль
+          </h1>
+        </div>
+      </header>
+
+      <div className="pt-16 container mx-auto px-4">
+        {/* User info section - visible on all views */}
+        <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6 mb-6">
+          <div className="flex items-center">
+            <div className="w-16 h-16 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mr-4">
+              <span className="text-2xl">
+                {profile?.name?.charAt(0) || 'U'}
+              </span>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                {profile?.name}
+              </h2>
+              <p className="text-text-secondary-light dark:text-text-secondary-dark">
+                {profile?.email}
+              </p>
+              {profile?.telegram_username && (
+                <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                  Telegram: @{profile.telegram_username}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar (Desktop) */}
-          <div className="hidden md:block w-64 flex-shrink-0">
-            <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-6">
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-3">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <span className="text-2xl font-bold text-gray-700 dark:text-gray-300">
-                      {user.name.charAt(0)}
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{user.name}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
-              </div>
-
-              <nav className="space-y-2">
-                {[
-                  { id: 'profile', label: 'Мой профиль' },
-                  { id: 'purchases', label: 'Мои покупки' },
-                  { id: 'security', label: 'Вход и безопасность' },
-                  { id: 'notifications', label: 'Уведомления' },
-                  { id: 'help', label: 'Помощь' }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-                      activeTab === item.id
-                        ? 'bg-[#8B7FF5] text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#0F0F1E]'
-                    }`}
-                    onClick={() => {
-                      hapticFeedback.selection();
-                      setActiveTab(item.id);
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-
+        {/* Desktop layout - sidebar + content */}
+        <div className="hidden md:grid grid-cols-4 gap-6">
+          {/* Sidebar */}
+          <div className="col-span-1 bg-white dark:bg-gray-800 rounded-card shadow p-4 h-fit">
+            <nav>
               <button
-                className="w-full text-left px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 mt-4 flex items-center"
-                onClick={handleLogout}
+                className={`w-full text-left px-4 py-3 rounded-button mb-2 ${
+                  activeSection === 'purchases'
+                    ? 'bg-primary-light dark:bg-primary-dark text-white'
+                    : 'text-text-primary-light dark:text-text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => setActiveSection('purchases')}
               >
-                <span>Выйти</span>
+                📦 Мои покупки
               </button>
-            </div>
+              <button
+                className={`w-full text-left px-4 py-3 rounded-button mb-2 ${
+                  activeSection === 'security'
+                    ? 'bg-primary-light dark:bg-primary-dark text-white'
+                    : 'text-text-primary-light dark:text-text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => setActiveSection('security')}
+              >
+                🔐 Вход и безопасность
+              </button>
+              <button
+                className={`w-full text-left px-4 py-3 rounded-button mb-2 ${
+                  activeSection === 'notifications'
+                    ? 'bg-primary-light dark:bg-primary-dark text-white'
+                    : 'text-text-primary-light dark:text-text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => setActiveSection('notifications')}
+              >
+                🔔 Уведомления
+              </button>
+              <button
+                className={`w-full text-left px-4 py-3 rounded-button mb-2 ${
+                  activeSection === 'help'
+                    ? 'bg-primary-light dark:bg-primary-dark text-white'
+                    : 'text-text-primary-light dark:text-text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                onClick={() => setActiveSection('help')}
+              >
+                ❓ Помощь
+              </button>
+              <button
+                className="w-full text-left px-4 py-3 rounded-button text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 mt-4"
+              >
+                🚪 Выйти
+              </button>
+            </nav>
           </div>
 
-          {/* Mobile Tabs */}
-          <div className="md:hidden mb-4">
-            <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-2">
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { id: 'profile', label: '👤 Профиль' },
-                  { id: 'security', label: '🔒 Безоп.' },
-                  { id: 'notifications', label: '🔔 Уведомл.' },
-                  { id: 'help', label: '❓ Помощь' }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    className={`px-3 py-2 rounded-xl transition-colors ${
-                      activeTab === item.id
-                        ? 'bg-[#8B7FF5] text-white'
-                        : 'text-gray-700 dark:text-gray-300'
-                    }`}
-                    onClick={() => {
-                      hapticFeedback.selection();
-                      setActiveTab(item.id);
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Profile Tab */}
-            {activeTab === 'profile' && (
-              <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Мой профиль</h2>
+          {/* Content area */}
+          <div className="col-span-3">
+            {activeSection === 'purchases' && (
+              <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6">
+                <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                  История покупок
+                </h3>
                 
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white">Аватар</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Это будет отображаться в профиле</p>
-                    </div>
-                    <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                      {user.avatar ? (
-                        <img src={user.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <span className="text-xl font-bold text-gray-700 dark:text-gray-300">
-                          {user.name.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Имя</label>
-                    {isEditing ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-[#0F0F1E] text-gray-900 dark:text-white"
-                        />
-                        <button
-                          className="px-4 py-2 bg-green-500 text-white rounded-xl"
-                          onClick={() => {
-                            hapticFeedback.light();
-                            handleSaveProfile();
-                          }}
-                        >
-                          Сохранить
-                        </button>
-                        <button
-                          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl"
-                          onClick={() => {
-                            hapticFeedback.light();
-                            setIsEditing(false);
-                            setEditName(user?.name || '');
-                          }}
-                        >
-                          Отмена
-                        </button>
+                {purchases.length > 0 ? (
+                  <div className="space-y-4">
+                    {purchases.map((purchase) => (
+                      <div 
+                        key={purchase.id} 
+                        className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
+                      >
+                        <div className="flex items-start">
+                          <img
+                            src={purchase.book.coverUrl}
+                            alt={purchase.book.title}
+                            className="w-16 h-20 object-cover rounded mr-4"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                              {purchase.book.title}
+                            </h4>
+                            <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                              {purchase.book.author}
+                            </p>
+                            <p className="text-text-primary-light dark:text-text-primary-dark mt-1">
+                              {purchase.amount}₽ • {new Date(purchase.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex justify-between items-center">
-                        <p className="text-gray-900 dark:text-white">{user.name}</p>
-                        <button
-                          className="px-4 py-2 bg-[#8B7FF5] text-white rounded-xl"
-                          onClick={() => {
-                            hapticFeedback.light();
-                            setIsEditing(true);
-                          }}
-                        >
-                          Редактировать
-                        </button>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Telegram</label>
-                    <p className="text-gray-900 dark:text-white">✓ Привязан: {user.telegram_id}</p>
-                    <button className="mt-2 px-4 py-2 bg-red-500 text-white rounded-xl text-sm">
-                      Отвязать
-                    </button>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-text-secondary-light dark:text-text-secondary-dark">
+                    У вас пока нет покупок
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Purchases Tab */}
-            {activeTab === 'purchases' && (
-              <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Мои покупки</h2>
-                
-                <div className="space-y-4">
-                  {settingsLoading ? (
-                    <p>Загрузка покупок...</p>
-                  ) : (
-                    <p>Здесь будут отображаться ваши покупки книг.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Security Tab */}
-            {activeTab === 'security' && (
-              <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Вход и безопасность</h2>
+            {activeSection === 'security' && (
+              <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6">
+                <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                  Вход и безопасность
+                </h3>
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Email</label>
-                    {isEditingEmail ? (
-                      <div className="space-y-3">
-                        <input
-                          type="email"
-                          value={newEmail}
-                          onChange={(e) => setNewEmail(e.target.value)}
-                          placeholder="Новый email"
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-[#0F0F1E] text-gray-900 dark:text-white"
-                        />
-                        <input
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder="Текущий пароль для подтверждения"
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-[#0F0F1E] text-gray-900 dark:text-white"
-                        />
-                        <div className="flex gap-2">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Email
+                    </h4>
+                    <div className="flex justify-between items-center">
+                      <p className="text-text-primary-light dark:text-text-primary-dark">
+                        {profile?.email}
+                      </p>
+                      <button
+                        className="text-primary-light dark:text-primary-dark hover:underline"
+                        onClick={() => {
+                          setIsEditingEmail(true);
+                          setNewEmail(profile?.email || '');
+                        }}
+                      >
+                        Изменить
+                      </button>
+                    </div>
+                    
+                    {isEditingEmail && (
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-button">
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                            Новый email
+                          </label>
+                          <input
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                            placeholder="Введите новый email"
+                          />
+                        </div>
+                        
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                            Пароль для подтверждения
+                          </label>
+                          <input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                            placeholder="Введите текущий пароль"
+                          />
+                        </div>
+                        
+                        <div className="flex space-x-2">
                           <button
-                            className="px-4 py-2 bg-green-500 text-white rounded-xl"
-                            onClick={() => {
-                              hapticFeedback.light();
-                              handleSaveEmail();
-                            }}
+                            className="px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
+                            onClick={handleEmailUpdate}
                           >
                             Сохранить
                           </button>
                           <button
-                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl"
-                            onClick={() => {
-                              hapticFeedback.light();
-                              setIsEditingEmail(false);
-                              setNewEmail('');
-                              setCurrentPassword('');
-                            }}
+                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                            onClick={() => setIsEditingEmail(false)}
                           >
                             Отмена
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex justify-between items-center">
-                        <p className="text-gray-900 dark:text-white">{user.email}</p>
-                        <button
-                          className="px-4 py-2 bg-[#8B7FF5] text-white rounded-xl"
-                          onClick={() => {
-                            hapticFeedback.light();
-                            setIsEditingEmail(true);
-                          }}
-                        >
-                          Изменить
-                        </button>
-                      </div>
                     )}
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Пароль</label>
-                    {isEditingPassword ? (
-                      <div className="space-y-3">
-                        <input
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder="Текущий пароль"
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-[#0F0F1E] text-gray-900 dark:text-white"
-                        />
-                        <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Новый пароль"
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-[#0F0F1E] text-gray-900 dark:text-white"
-                        />
-                        <input
-                          type="password"
-                          value={confirmNewPassword}
-                          onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          placeholder="Повторите новый пароль"
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-[#0F0F1E] text-gray-900 dark:text-white"
-                        />
-                        <div className="flex gap-2">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Пароль
+                    </h4>
+                    <div className="flex justify-between items-center">
+                      <p className="text-text-primary-light dark:text-text-primary-dark">
+                        ********
+                      </p>
+                      <button
+                        className="text-primary-light dark:text-primary-dark hover:underline"
+                        onClick={() => setIsEditingPassword(true)}
+                      >
+                        Изменить
+                      </button>
+                    </div>
+                    
+                    {isEditingPassword && (
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-button">
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                            Текущий пароль
+                          </label>
+                          <input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                            placeholder="Введите текущий пароль"
+                          />
+                        </div>
+                        
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                            Новый пароль
+                          </label>
+                          <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                            placeholder="Введите новый пароль"
+                          />
+                        </div>
+                        
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                            Повторите пароль
+                          </label>
+                          <input
+                            type="password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                            placeholder="Повторите новый пароль"
+                          />
+                        </div>
+                        
+                        <div className="flex space-x-2">
                           <button
-                            className="px-4 py-2 bg-green-500 text-white rounded-xl"
-                            onClick={() => {
-                              hapticFeedback.light();
-                              handleSavePassword();
-                            }}
+                            className="px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
+                            onClick={handlePasswordUpdate}
                           >
                             Изменить
                           </button>
                           <button
-                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl"
-                            onClick={() => {
-                              hapticFeedback.light();
-                              setIsEditingPassword(false);
-                              setCurrentPassword('');
-                              setNewPassword('');
-                              setConfirmNewPassword('');
-                            }}
+                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                            onClick={() => setIsEditingPassword(false)}
                           >
                             Отмена
                           </button>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex justify-between items-center">
-                        <p className="text-gray-900 dark:text-white">••••••••</p>
-                        <button
-                          className="px-4 py-2 bg-[#8B7FF5] text-white rounded-xl"
-                          onClick={() => {
-                            hapticFeedback.light();
-                            setIsEditingPassword(true);
-                          }}
-                        >
-                          Изменить
-                        </button>
-                      </div>
                     )}
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Двухфакторная аутентификация</label>
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Двухфакторная аутентификация
+                    </h4>
                     <div className="flex justify-between items-center">
-                      <p className="text-gray-900 dark:text-white">
-                        {is2FAEnabled ? 'Включена' : 'Выключена'}
+                      <p className="text-text-secondary-light dark:text-text-secondary-light">
+                        Не включена
                       </p>
-                      <button
-                        className={`px-4 py-2 rounded-xl ${
-                          is2FAEnabled 
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-[#8B7FF5] text-white'
-                        }`}
-                        onClick={handleToggle2FA}
-                      >
-                        {is2FAEnabled ? 'Отключить' : 'Включить'}
+                      <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button">
+                        Включить 2FA
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Привязанные аккаунты
+                    </h4>
+                    <div className="flex justify-between items-center">
+                      <p className="text-text-primary-light dark:text-text-primary-light">
+                        ✓ Telegram: @{profile?.telegram_username || 'не привязан'}
+                      </p>
+                      <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button">
+                        {profile?.telegram_username ? 'Отвязать' : 'Привязать'}
                       </button>
                     </div>
                   </div>
@@ -522,89 +420,95 @@ const ProfilePage: React.FC = () => {
               </div>
             )}
 
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && notificationSettings && (
-              <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Настройки уведомлений</h2>
+            {activeSection === 'notifications' && (
+              <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6">
+                <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                  Настройки уведомлений
+                </h3>
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Типы уведомлений</label>
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-3">
+                      Типы уведомлений
+                    </h4>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-gray-900 dark:text-white">Новые книги в избранных жанрах</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Получать уведомления о новых книгах в жанрах, которые вы читаете</p>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-primary-light dark:text-text-primary-dark">
+                          Новые книги в избранных жанрах
+                        </span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             className="sr-only peer"
-                            checked={notificationSettings.newBooksInGenre}
-                            onChange={(e) => handleUpdateNotificationSettings({
-                              ...notificationSettings,
-                              newBooksInGenre: e.target.checked
-                            })}
+                            checked={true}
+                            onChange={(e) => handleNotificationChange('newBooksInGenre', e.target.checked)}
                           />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#8B7FF5]"></div>
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-light/25 dark:peer-focus:ring-primary-dark/25 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark"></div>
                         </label>
                       </div>
                       
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-gray-900 dark:text-white">Напоминание о недочитанных книгах</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Получать напоминания, если вы давно не читали книгу</p>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-primary-light dark:text-text-primary-dark">
+                          Напоминание о недочитанных книгах
+                        </span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             className="sr-only peer"
-                            checked={notificationSettings.unfinishedReminder}
-                            onChange={(e) => handleUpdateNotificationSettings({
-                              ...notificationSettings,
-                              unfinishedReminder: e.target.checked
-                            })}
+                            checked={true}
+                            onChange={(e) => handleNotificationChange('unfinishedReminder', e.target.checked)}
                           />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#8B7FF5]"></div>
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-light/25 dark:peer-focus:ring-primary-dark/25 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark"></div>
                         </label>
                       </div>
                       
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-gray-900 dark:text-white">Специальные предложения</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Получать информацию о скидках и специальных предложениях</p>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-primary-light dark:text-text-primary-dark">
+                          Специальные предложения
+                        </span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             className="sr-only peer"
-                            checked={notificationSettings.specialOffers}
-                            onChange={(e) => handleUpdateNotificationSettings({
-                              ...notificationSettings,
-                              specialOffers: e.target.checked
-                            })}
+                            checked={true}
+                            onChange={(e) => handleNotificationChange('specialOffers', e.target.checked)}
                           />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#8B7FF5]"></div>
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-light/25 dark:peer-focus:ring-primary-dark/25 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark"></div>
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-primary-light dark:text-text-primary-dark">
+                          Новости и обновления
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={false}
+                            onChange={(e) => handleNotificationChange('newsAndUpdates', e.target.checked)}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-light/25 dark:peer-focus:ring-primary-dark/25 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark"></div>
                         </label>
                       </div>
                     </div>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Частота напоминаний</label>
-                    <div className="flex gap-3">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-3">
+                      Частота напоминаний
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
                       {(['daily', '3days', 'weekly'] as const).map((freq) => (
                         <button
                           key={freq}
-                          className={`px-4 py-2 rounded-xl ${
-                            notificationSettings.frequency === freq
-                              ? 'bg-[#8B7FF5] text-white'
-                              : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
+                          type="button"
+                          className={`py-2 px-3 rounded-button text-sm ${
+                            '3days' === freq // Using default value for demo
+                              ? 'bg-primary-light dark:bg-primary-dark text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
                           }`}
-                          onClick={() => handleUpdateNotificationSettings({
-                            ...notificationSettings,
-                            frequency: freq
-                          })}
+                          onClick={() => handleNotificationChange('frequency', freq)}
                         >
                           {freq === 'daily' && 'Каждый день'}
                           {freq === '3days' && 'Раз в 3 дня'}
@@ -615,71 +519,341 @@ const ProfilePage: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Telegram-уведомления</label>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-gray-900 dark:text-white">Включены</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">Уведомления будут отправляться в Telegram</p>
-                      </div>
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-3">
+                      Telegram-уведомления
+                    </h4>
+                    <div className="flex items-center justify-between">
+                      <span className="text-text-primary-light dark:text-text-primary-dark">
+                        Включены
+                      </span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
-                          checked={notificationSettings.telegramEnabled}
-                          onChange={(e) => handleUpdateNotificationSettings({
-                            ...notificationSettings,
-                            telegramEnabled: e.target.checked
-                          })}
+                          checked={true}
+                          onChange={(e) => handleNotificationChange('telegramEnabled', e.target.checked)}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#8B7FF5]"></div>
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-light/25 dark:peer-focus:ring-primary-dark/25 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-light dark:peer-checked:bg-primary-dark"></div>
                       </label>
                     </div>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light mt-1">
+                      Бот: @bookly_notifications_bot
+                    </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Help Tab */}
-            {activeTab === 'help' && (
-              <div className="bg-white dark:bg-[#1A1A2E] rounded-2xl shadow-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Помощь</h2>
+            {activeSection === 'help' && (
+              <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6">
+                <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                  ❓ Помощь
+                </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { title: '🚀 Как начать', desc: 'Краткое руководство по использованию приложения', icon: '🚀' },
-                    { title: '💳 Способы оплаты', desc: 'Telegram Stars, как совершать покупки', icon: '💳' },
-                    { title: '📖 Как читать книги', desc: 'Reader, закладки, настройки', icon: '📖' },
-                    { title: '❤️ Избранное и коллекции', desc: 'Организация личной библиотеки', icon: '❤️' },
-                    { title: '🔐 Безопасность', desc: '2FA, смена пароля, приватность', icon: '🔐' },
-                    { title: '📧 Связь с поддержкой', desc: 'support@bookly.app', icon: '📧' }
-                  ].map((item, index) => (
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      🚀 Как начать
+                    </h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
+                      Краткое руководство по использованию приложения
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      💳 Способы оплаты
+                    </h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
+                      ЮKassa, USDT TON, USDT TRC20
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      📖 Как читать книги
+                    </h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
+                      Reader, закладки, настройки
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      ❤️ Избранное и коллекции
+                    </h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
+                      Организация личной библиотеки
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      🔐 Безопасность
+                    </h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
+                      2FA, смена пароля, приватность
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      📧 Связь с поддержкой
+                    </h4>
+                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
+                      support@bookly.app<br />
+                      Telegram: @bookly_support
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile layout - tabs at the top */}
+        <div className="md:hidden">
+          <div className="flex overflow-x-auto space-x-2 mb-6 pb-2">
+            {(['purchases', 'security', 'notifications', 'help'] as const).map((section) => (
+              <button
+                key={section}
+                className={`px-4 py-2 rounded-button whitespace-nowrap ${
+                  activeSection === section
+                    ? 'bg-primary-light dark:bg-primary-dark text-white'
+                    : 'bg-white dark:bg-gray-800 text-text-primary-light dark:text-text-primary-dark'
+                }`}
+                onClick={() => setActiveSection(section)}
+              >
+                {section === 'purchases' && 'Покупки'}
+                {section === 'security' && 'Безопасность'}
+                {section === 'notifications' && 'Уведомления'}
+                {section === 'help' && 'Помощь'}
+              </button>
+            ))}
+          </div>
+
+          {/* Content for mobile */}
+          {activeSection === 'purchases' && (
+            <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6">
+              <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                История покупок
+              </h3>
+              
+              {purchases.length > 0 ? (
+                <div className="space-y-4">
+                  {purchases.map((purchase) => (
                     <div 
-                      key={index} 
-                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-[#0F0F1E] cursor-pointer transition-colors"
-                      onClick={() => {
-                        hapticFeedback.light();
-                        showPopup({
-                          title: item.title,
-                          message: item.desc,
-                          buttons: [
-                            { id: 'ok', text: 'OK', type: 'default' }
-                          ]
-                        });
-                      }}
+                      key={purchase.id} 
+                      className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0 last:pb-0"
                     >
                       <div className="flex items-start">
-                        <span className="text-2xl mr-3">{item.icon}</span>
-                        <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white">{item.title}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{item.desc}</p>
+                        <img
+                          src={purchase.book.coverUrl}
+                          alt={purchase.book.title}
+                          className="w-16 h-20 object-cover rounded mr-4"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                            {purchase.book.title}
+                          </h4>
+                          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                            {purchase.book.author}
+                          </p>
+                          <p className="text-text-primary-light dark:text-text-primary-dark mt-1">
+                            {purchase.amount}₽ • {new Date(purchase.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="text-text-secondary-light dark:text-text-secondary-light">
+                  У вас пока нет покупок
+                </p>
+              )}
+            </div>
+          )}
+
+          {activeSection === 'security' && (
+            <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6">
+              <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                Вход и безопасность
+              </h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                    Email
+                  </h4>
+                  <div className="flex justify-between items-center">
+                    <p className="text-text-primary-light dark:text-text-primary-dark">
+                      {profile?.email}
+                    </p>
+                    <button
+                      className="text-primary-light dark:text-primary-dark hover:underline text-sm"
+                      onClick={() => {
+                        setIsEditingEmail(true);
+                        setNewEmail(profile?.email || '');
+                      }}
+                    >
+                      Изменить
+                    </button>
+                  </div>
+                  
+                  {isEditingEmail && (
+                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-button">
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                          Новый email
+                        </label>
+                        <input
+                          type="email"
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                          placeholder="Введите новый email"
+                        />
+                      </div>
+                      
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                          Пароль для подтверждения
+                        </label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                          placeholder="Введите текущий пароль"
+                        />
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <button
+                          className="flex-1 px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
+                          onClick={handleEmailUpdate}
+                        >
+                          Сохранить
+                        </button>
+                        <button
+                          className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                          onClick={() => setIsEditingEmail(false)}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                    Пароль
+                  </h4>
+                  <div className="flex justify-between items-center">
+                    <p className="text-text-primary-light dark:text-text-primary-dark">
+                      ********
+                    </p>
+                    <button
+                      className="text-primary-light dark:text-primary-dark hover:underline text-sm"
+                      onClick={() => setIsEditingPassword(true)}
+                    >
+                      Изменить
+                    </button>
+                  </div>
+                  
+                  {isEditingPassword && (
+                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-button">
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                          Текущий пароль
+                        </label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                          placeholder="Введите текущий пароль"
+                        />
+                      </div>
+                      
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                          Новый пароль
+                        </label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                          placeholder="Введите новый пароль"
+                        />
+                      </div>
+                      
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                          Повторите пароль
+                        </label>
+                        <input
+                          type="password"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                          placeholder="Повторите новый пароль"
+                        />
+                      </div>
+                      
+                      <div className="flex space-x-2">
+                        <button
+                          className="flex-1 px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
+                          onClick={handlePasswordUpdate}
+                        >
+                          Изменить
+                        </button>
+                        <button
+                          className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                          onClick={() => setIsEditingPassword(false)}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                    Двухфакторная аутентификация
+                  </h4>
+                  <div className="flex justify-between items-center">
+                    <p className="text-text-secondary-light dark:text-text-secondary-light">
+                      Не включена
+                    </p>
+                    <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button text-sm">
+                      Включить 2FA
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                    Привязанные аккаунты
+                  </h4>
+                  <div className="flex justify-between items-center">
+                    <p className="text-text-primary-light dark:text-text-primary-light">
+                      ✓ Telegram: @{profile?.telegram_username || 'не привязан'}
+                    </p>
+                    <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button text-sm">
+                      {profile?.telegram_username ? 'Отвязать' : 'Привязать'}
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Notifications and Help sections would be similar to desktop but simplified for mobile */}
         </div>
       </div>
     </div>

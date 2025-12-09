@@ -1,0 +1,53 @@
+# Node / NPM
+node_modules/
+npm-debug.log
+*.log
+.npm/
+pids/
+lib-cov/
+coverage/
+.nyc_output/
+build/
+dist/
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-selfcheck.json
+pip-log.txt
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.tox/
+.nox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings
+.classpath
+c.iml
+
+# Vercel
+.vercel/

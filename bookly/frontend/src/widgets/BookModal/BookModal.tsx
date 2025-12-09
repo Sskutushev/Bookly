@@ -1,57 +1,67 @@
-import React, { Fragment, useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { motion } from 'framer-motion';
-import { useBookModalStore } from './use-book-modal-store';
-import { useBook } from '../../entities/book/api/use-book';
-import { useAuthStore } from '../../entities/user/model/use-auth-store';
-import { haptic } from '../../shared/lib/haptic';
-import { useNavigate } from 'react-router-dom';
+import { Fragment } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+
+// Components
 import PaymentModal from '../../features/payment/ui/PaymentModal';
 
-const BookModal: React.FC = () => {
-  const { isOpen, bookId, closeModal } = useBookModalStore();
-  const { data: book, isLoading, error } = useBook(bookId!);
-  const { user } = useAuthStore();
-  const navigate = useNavigate();
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+// API
+import { addToFavorites, removeFromFavorites } from '../../entities/book/api/book-api';
 
-  const handleClose = () => {
-    haptic.light();
-    closeModal();
-  };
+// Types
+import { Book } from '../../entities/book/model/types';
 
-  const handleReadFragment = () => {
-    haptic.medium();
-    if (book) {
-      navigate(`/reader/${book.id}?fragment=true`);
-      closeModal();
+interface BookModalProps {
+  book: Book;
+  onClose: () => void;
+  onBookAdded: () => void;
+}
+
+const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => {
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  
+  const favoriteMutation = useMutation({
+    mutationFn: async () => {
+      if (book.isFavorite) {
+        await removeFromFavorites(book.id);
+        return false;
+      } else {
+        await addToFavorites(book.id);
+        return true;
+      }
+    },
+    onSuccess: (isFavorite) => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book', book.id] });
+      toast.success(isFavorite ? 'Добавлено в избранное!' : 'Удалено из избранного');
+    },
+    onError: () => {
+      toast.error('Ошибка при изменении избранного');
     }
-  };
+  });
 
-  const handleRead = () => {
-    haptic.medium();
-    if (book) {
-      // If book is free, add to library and navigate to reader
-      if (book.isFree) {
-        navigate(`/reader/${book.id}`);
-        closeModal();
-      }
-      // If user has purchased the book, navigate to reader
-      else if (book.isPurchased) {
-        navigate(`/reader/${book.id}`);
-        closeModal();
-      }
-      // If book is paid and not purchased, show payment modal
-      else {
-        setShowPaymentModal(true);
-      }
+  const handleReadClick = () => {
+    if (book.isFree) {
+      // Add to user's books and navigate to reader
+      onBookAdded();
+      onClose();
+    } else if (!book.isPurchased) {
+      // Open payment modal
+      setIsPaymentModalOpen(true);
+    } else {
+      // Navigate to reader
+      onBookAdded();
+      onClose();
     }
   };
 
   return (
     <>
-      <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={handleClose}>
+      <Transition appear show={!!book} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={onClose}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -61,7 +71,7 @@ const BookModal: React.FC = () => {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-50" />
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -75,75 +85,110 @@ const BookModal: React.FC = () => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-lg md:max-w-3xl transform overflow-hidden rounded-2xl bg-white dark:bg-[#1A1A2E] p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900 dark:text-white flex justify-between items-center">
-                    <span>Book Details</span>
-                    <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                      &times;
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
+                  <div className="flex justify-between items-start">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-lg font-medium leading-6 text-text-primary-light dark:text-text-primary-dark"
+                    >
+                      {book.title}
+                    </Dialog.Title>
+                    <button
+                      type="button"
+                      className="text-gray-400 hover:text-gray-500"
+                      onClick={onClose}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
                     </button>
-                  </Dialog.Title>
+                  </div>
 
-                  <div className="mt-4">
-                    {isLoading ? (
-                      <div>Loading book details...</div>
-                    ) : error ? (
-                      <div className="text-red-500">Error loading book: {error.message}</div>
-                    ) : book ? (
-                      <div className="md:flex md:space-x-6">
-                        <div className="md:w-1/3 flex-shrink-0">
-                          <img
-                            src={book.coverUrl}
-                            alt={book.title}
-                            className="rounded-xl shadow-lg w-full aspect-[2/3] object-cover"
-                          />
-                        </div>
-                        <div className="mt-4 md:mt-0 md:w-2/3">
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{book.title}</h2>
-                          <p className="text-lg text-gray-600 dark:text-gray-300 mt-1">{book.author}</p>
-
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {book.genres?.map((genre, index: number) => (
-                              <span
-                                key={genre.id || index}
-                                className="px-3 py-1 text-sm rounded-full bg-[#F8F9FE] dark:bg-[#0F0F1E] text-[#1A1A2E] dark:text-white border border-[#8B7FF5] dark:border-[#9B8AFF]"
-                              >
-                                {genre.name}
-                              </span>
-                            ))}
-                          </div>
-
-                          <p className="mt-4 text-gray-700 dark:text-gray-300">
-                            {book.description}
-                          </p>
-
-                          <div className="mt-6 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                            <button
-                              className="w-full px-4 py-2 rounded-xl bg-[#FF9B9B] dark:bg-[#FF6B9D] text-white font-semibold hover:opacity-90 transition-opacity"
-                              onClick={handleReadFragment}
-                            >
-                              Read Fragment
-                            </button>
-                            <button
-                              className={`w-full px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition-opacity ${
-                                book.isPurchased
-                                  ? 'bg-[#8B7FF5] dark:bg-[#9B8AFF] text-white'
-                                  : book.isFree
-                                    ? 'bg-[#FFE45E] dark:bg-[#FFD93D] text-[#1A1A2E] dark:text-[#0F0F1E]'
-                                    : 'bg-[#8B7FF5] dark:bg-[#9B8AFF] text-white'
-                              }`}
-                              onClick={handleRead}
-                            >
-                              {book.isPurchased
-                                ? 'Read'
-                                : book.isFree
-                                  ? 'Add to Library'
-                                  : `Buy for ${book.price} XTR`
-                              }
-                            </button>
-                          </div>
-                        </div>
+                  <div className="mt-4 flex flex-col md:flex-row gap-4">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={book.coverUrl}
+                        alt={book.title}
+                        className="w-40 h-56 object-cover rounded-card"
+                      />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                        {book.author}
+                      </h4>
+                      
+                      <p className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                        {book.description.length > 100 
+                          ? `${book.description.substring(0, 100)}...` 
+                          : book.description}
+                      </p>
+                      
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {book.genres.map((genre) => (
+                          <span
+                            key={genre.id}
+                            className="px-2 py-1 bg-primary-light/10 dark:bg-primary-dark/10 text-primary-light dark:text-primary-dark text-xs rounded-element"
+                          >
+                            {genre.name}
+                          </span>
+                        ))}
                       </div>
-                    ) : null}
+                      
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          type="button"
+                          className={`flex-1 px-4 py-2 rounded-button ${
+                            book.isPurchased 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-primary-light dark:bg-primary-dark text-white'
+                          }`}
+                          onClick={handleReadClick}
+                        >
+                          {book.isFree 
+                            ? 'Читать' 
+                            : book.isPurchased 
+                              ? 'Читать' 
+                              : 'Купить'}
+                        </button>
+                        
+                        <button
+                          type="button"
+                          className={`px-4 py-2 rounded-button ${
+                            book.isFavorite 
+                              ? 'bg-red-500 text-white' 
+                              : 'bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
+                          }`}
+                          onClick={() => favoriteMutation.mutate()}
+                          disabled={favoriteMutation.isPending}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill={book.isFavorite ? "currentColor" : "none"}
+                            stroke="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </Dialog.Panel>
               </Transition.Child>
@@ -151,16 +196,17 @@ const BookModal: React.FC = () => {
           </div>
         </Dialog>
       </Transition>
-
-      {book && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          bookId={book.id}
-          bookTitle={book.title}
-          bookAuthor={book.author}
-          bookCover={book.coverUrl}
-          bookPrice={book.price}
+      
+      {/* Payment Modal */}
+      {isPaymentModalOpen && (
+        <PaymentModal 
+          book={book} 
+          onClose={() => setIsPaymentModalOpen(false)} 
+          onSuccess={() => {
+            setIsPaymentModalOpen(false);
+            onBookAdded();
+            onClose();
+          }} 
         />
       )}
     </>

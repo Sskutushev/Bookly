@@ -1,81 +1,64 @@
-// frontend/src/shared/lib/telegram-main-button.ts
+// src/shared/lib/telegram-main-button.ts
 
-const tg = window.Telegram?.WebApp;
-let currentCallback: (() => void) | null = null;
+import { tg } from './telegram-app';
 
-export class TelegramMainButton {
-  static show(text: string, onClick: () => void) {
-    if (tg?.MainButton) {
-      // Remove previous listener if exists
-      if (currentCallback) {
-        tg.MainButton.offClick(currentCallback);
-      }
+class TelegramMainButton {
+  private isVisible: boolean = false;
+  private isEnabled: boolean = true;
+  private isProgressVisible: boolean = false;
 
-      tg.MainButton.setText(text);
-      tg.MainButton.show();
-      tg.MainButton.enable();
-
-      // Update callback reference
-      currentCallback = onClick;
-      tg.MainButton.onClick(currentCallback);
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  show(text: string, onClick: () => void): void {
+    if (!tg) return;
+    
+    tg.MainButton.setText(text);
+    tg.MainButton.show();
+    tg.MainButton.onClick(onClick);
+    
+    this.isVisible = true;
   }
 
-  static hide() {
-    if (tg?.MainButton) {
-      if (currentCallback) {
-        tg.MainButton.offClick(currentCallback);
-        currentCallback = null;
-      }
-      tg.MainButton.hide();
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  hide(): void {
+    if (!tg) return;
+    
+    tg.MainButton.hide();
+    tg.MainButton.offClick(() => {}); // Remove any existing click handlers
+    
+    this.isVisible = false;
   }
 
-  static showProgress(leaveActive: boolean = false) {
-    if (tg?.MainButton) {
-      tg.MainButton.showProgress(leaveActive);
-      if (!leaveActive) {
-        tg.MainButton.disable();
-      }
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  showProgress(leaveActive: boolean = false): void {
+    if (!tg) return;
+    
+    tg.MainButton.showProgress(leaveActive);
+    this.isProgressVisible = true;
   }
 
-  static hideProgress() {
-    if (tg?.MainButton) {
-      tg.MainButton.hideProgress();
-      tg.MainButton.enable();
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  hideProgress(): void {
+    if (!tg) return;
+    
+    tg.MainButton.hideProgress();
+    this.isProgressVisible = false;
   }
 
-  static enable() {
-    if (tg?.MainButton) {
-      tg.MainButton.enable();
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  enable(): void {
+    if (!tg) return;
+    
+    tg.MainButton.enable();
+    this.isEnabled = true;
   }
 
-  static disable() {
-    if (tg?.MainButton) {
-      tg.MainButton.disable();
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  disable(): void {
+    if (!tg) return;
+    
+    tg.MainButton.disable();
+    this.isEnabled = false;
   }
 
-  static setParams(params: any) {
-    if (tg?.MainButton) {
-      tg.MainButton.setParams(params);
-    } else {
-      console.warn('Telegram MainButton is not supported in this version');
-    }
+  updateText(text: string): void {
+    if (!tg) return;
+    
+    tg.MainButton.setText(text);
   }
 }
+
+export default new TelegramMainButton();

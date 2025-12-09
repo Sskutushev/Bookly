@@ -1,0 +1,104 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  password          String?
+  name              String
+  avatar            String?
+  telegram_id       String?             @unique
+  telegram_username String?
+  twoFactorSecret   String?
+  createdAt         DateTime            @default(now())
+
+  favorites         Favorite[]
+  purchases         Purchase[]
+  readingProgress   ReadingProgress[]
+  notifications     NotificationSettings?
+}
+
+model Book {
+  id          String   @id @default(uuid())
+  title       String
+  author      String
+  description String
+  coverUrl    String
+  pdfUrl      String
+  price       Float    // 0 = бесплатная
+  isFree      Boolean  @default(false)
+  pageCount   Int
+  createdAt   DateTime @default(now())
+
+  genres            Genre[]
+  favorites         Favorite[]
+  purchases         Purchase[]
+  readingProgress   ReadingProgress[]
+}
+
+model Genre {
+  id    String @id @default(uuid())
+  name  String @unique
+  books Book[]
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  bookId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  userId        String
+  bookId        String
+  amount        Float
+  paymentMethod String // "telegram_stars" | "yookassa" | "usdt_ton" | "usdt_trc20"
+  status        String // "pending" | "completed" | "failed"
+  transactionId String?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+}
+
+model ReadingProgress {
+  id         String   @id @default(uuid())
+  userId     String
+  bookId     String
+  currentPage Int     @default(1)
+  progress   Float   @default(0) // 0-100%
+  lastReadAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+}
+
+model NotificationSettings {
+  id                    String  @id @default(uuid())
+  userId                String  @unique
+  newBooksInGenre       Boolean @default(true)
+  unfinishedReminder    Boolean @default(true)
+  specialOffers         Boolean @default(true)
+  newsAndUpdates        Boolean @default(false)
+  frequency             String  @default("3days") // "daily" | "3days" | "weekly"
+  telegramEnabled       Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id])
+}

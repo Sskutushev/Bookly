@@ -1,5 +1,3 @@
-# telegram-bot/bot.py
-
 import logging
 from telegram import Update, WebAppInfo, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (
@@ -7,86 +5,103 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
     MessageHandler,
-    filters,
+    filters
 )
-import os
 from dotenv import load_dotenv
+import os
+import asyncio
+
+# Import scheduler
+from scheduler import setup_scheduler
 
 # Load environment variables
 load_dotenv()
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Get environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://bookly-mini-app.vercel.app")
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message with a button to open the Mini App."""
-    keyboard = [
-        [KeyboardButton("📚 Open Library", web_app=WebAppInfo(url=MINI_APP_URL))]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    
-    await update.message.reply_text(
-        "Welcome to Bookly! 📚\n\n"
-        "Your personal library in Telegram. Read books, discover new authors, and enjoy your reading experience.",
-        reply_markup=reply_markup
-    )
-
-async def library(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Open the library Mini App."""
-    await update.message.reply_text(
-        "📚 Opening your library...",
-        reply_markup=ReplyKeyboardMarkup(
-            [[KeyboardButton("📚 My Books", web_app=WebAppInfo(url=f"{MINI_APP_URL}/my-books"))]],
-            resize_keyboard=True
+# Command handlers
+async def start(update: Update, context: ContextTypes.DEFAULT) -> None:
+    """Send a message when the command /start is issued."""
+    user = update.effective_user
+    await update.message.reply_html(
+        f'Привет, {user.mention_html()}! 👋\n\n'
+        f'Добро пожаловать в Bookly - телеграмм бот для онлайн-библиотеки. '
+        f'Через этого бота вы можете читать книги, добавлять их в избранное '
+        f'и покупать платные издания.\n\n'
+        f'Чтобы открыть приложение, нажмите кнопку "Открыть библиотеку" ниже.',
+        reply_markup=ReplyKeyboardMarkup.from_button(
+            KeyboardButton(
+                text="📚 Открыть библиотеку",
+                web_app=WebAppInfo(url=os.getenv('MINI_APP_URL', 'https://your-mini-app-url.com'))
+            )
         )
     )
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a help message."""
-    help_text = (
-        "📖 Bookly Help\n\n"
-        "Commands:\n"
-        "/start - Start the bot and open the library\n"
-        "/library - Open your personal library\n"
-        "/help - Show this help message\n\n"
-        "Features:\n"
-        "• Browse and read books\n"
-        "• Add books to favorites\n"
-        "• Purchase books with Telegram Stars\n"
-        "• Track your reading progress\n"
-        "• Get personalized recommendations\n\n"
-        "Enjoy your reading experience! 📚"
+async def library(update: Update, context: ContextTypes.DEFAULT) -> None:
+    """Open the library Mini App."""
+    await update.message.reply_text(
+        'Откройте вашу библиотеку в Mini App:',
+        reply_markup=ReplyKeyboardMarkup.from_button(
+            KeyboardButton(
+                text="📚 Мои книги",
+                web_app=WebAppInfo(url=f"{os.getenv('MINI_APP_URL', 'https://your-mini-app-url.com')}/my-books")
+            )
+        )
     )
-    await update.message.reply_text(help_text)
 
-async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle data sent from the web app."""
-    query = update.effective_message
-    print(f"Received web app data: {query.web_app_data.data}")
-    await query.reply_text(f"Thank you for sending: {query.web_app_data.data}")
+async def help_command(update: Update, context: ContextTypes.DEFAULT) -> None:
+    """Send a message when the command /help is issued."""
+    await update.message.reply_text(
+        '📖 Справка по боту Bookly:\n\n'
+        '/start - Приветственное сообщение\n'
+        '/library - Открыть вашу библиотеку\n'
+        '/help - Показать это сообщение\n\n'
+        'Для полноценного использования библиотеки '
+        'используйте кнопки под сообщениями, '
+        'которые открывают Mini App.'
+    )
+
+async def open_mini_app(update: Update, context: ContextTypes.DEFAULT) -> None:
+    """Open the main Mini App."""
+    await update.message.reply_text(
+        'Откройте Bookly:',
+        reply_markup=ReplyKeyboardMarkup.from_button(
+            KeyboardButton(
+                text="📚 Открыть Bookly",
+                web_app=WebAppInfo(url=os.getenv('MINI_APP_URL', 'https://your-mini-app-url.com'))
+            )
+        )
+    )
 
 def main() -> None:
-    """Run the bot."""
+    """Start the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(BOT_TOKEN).build()
+    application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
 
-    # Add command handlers
+    # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("library", library))
     application.add_handler(CommandHandler("help", help_command))
-    
-    # Handle web app data
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+
+    # Handle messages with "библиотека", "книги", "читать" keywords
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, open_mini_app
+    ))
+
+    # Set up the scheduler for notifications
+    scheduler = setup_scheduler(application)
 
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    finally:
+        # Shut down the scheduler when the bot stops
+        scheduler.shutdown()
 
 if __name__ == "__main__":
     main()

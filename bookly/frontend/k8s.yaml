@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookly-frontend
+spec:
+  selector:
+    app: bookly-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookly-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookly-frontend
+  template:
+    metadata:
+      labels:
+        app: bookly-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: bookly-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: VITE_API_BASE_URL
+          value: "https://api.bookly-app.com"
