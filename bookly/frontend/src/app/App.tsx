@@ -17,9 +17,61 @@ import BottomNav from '@/widgets/BottomNav/BottomNav';
 import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
 import TelegramSettingsButton from '@/widgets/TelegramSettingsButton/TelegramSettingsButton';
 
-// ... (rest of the imports)
+// Lib
+import { initTelegramApp } from '@/shared/lib/telegram-app';
 
-// ... (AnimatedRoutes component remains the same)
+// Store
+import { useAuthStore } from '../features/auth/model/auth-store'; // Changed to relative path
+
+// UI
+import AnimatedPage from '@/shared/ui/AnimatedPage';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
+// Wrapper component for page transitions
+const AnimatedRoutes: React.FC = () => {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={
+          <AnimatedPage>
+            <HomePage />
+          </AnimatedPage>
+        } />
+        <Route path="/favorites" element={
+          <AnimatedPage>
+            <FavoritesPage />
+          </AnimatedPage>
+        } />
+        <Route path="/my-books" element={
+          <AnimatedPage>
+            <MyBooksPage />
+          </AnimatedPage>
+        } />
+        <Route path="/profile" element={
+          <AnimatedPage>
+            <ProfilePage />
+          </AnimatedPage>
+        } />
+        <Route path="/reader/:bookId" element={
+          <AnimatedPage>
+            <Reader />
+          </AnimatedPage>
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
 
 const App = () => {
   const { initAuth } = useAuthStore();
