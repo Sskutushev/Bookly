@@ -213,7 +213,7 @@ const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => 
           onClose={() => setIsPaymentModalOpen(false)} 
           onSuccess={() => {
             setIsPaymentModalOpen(false);
-            onBookAdded();
+            onBookAdded(book.id);
             onClose();
           }} 
         />
