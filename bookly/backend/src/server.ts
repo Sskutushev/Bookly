@@ -39,28 +39,30 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// --- CORS Configuration ---
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://localhost:5173', // Vite default port
-  'https://bookly-bot.vercel.app', // Vercel deployment URL
+  'http://localhost:5173',
+  'https://bookly-bot.vercel.app',
 ];
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
 
-// Enable CORS for allowed origins
-app.use(cors({
+const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
-      return callback(new Error(msg), false);
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    // or from our list of allowed origins.
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-    return callback(null, true);
   },
   credentials: true,
-}));
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+
+app.use(cors(corsOptions));
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
