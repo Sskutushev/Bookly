@@ -37,7 +37,7 @@ const HomePage: React.FC = () => {
 
   const addBookToMyBooksMutation = useMutation({
     mutationFn: (bookId: string) => addBookToMyBooks(bookId),
-    onSuccess: (data, bookId) => {
+    onSuccess: (_, bookId) => {
       queryClient.invalidateQueries({ queryKey: ['my-books'] });
       queryClient.invalidateQueries({ queryKey: ['reading-progress', bookId] });
       toast.success('Книга добавлена в библиотеку!');

@@ -20,7 +20,7 @@ import SettingsModal from './SettingsModal';
 
 
 // Types
-import { Book } from '@/entities/book/model/types';
+// import { Book } from '@/entities/book/model/types'; // No longer directly used here
 
 const Reader: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();

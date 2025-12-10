@@ -17,7 +17,7 @@ import { Book } from '@/entities/book/model/types';
 interface BookModalProps {
   book: Book;
   onClose: () => void;
-  onBookAdded: () => void;
+  onBookAdded: (bookId: string) => void;
 }
 
 const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => {
