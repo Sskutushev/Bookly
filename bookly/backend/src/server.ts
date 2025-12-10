@@ -42,6 +42,7 @@ app.use(limiter);
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173', // Vite default port
+  'https://bookly-bot.vercel.app', // Vercel deployment URL
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
