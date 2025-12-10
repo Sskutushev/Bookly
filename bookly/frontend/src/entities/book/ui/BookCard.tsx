@@ -17,7 +17,7 @@ const BookCard: React.FC<BookCardProps> = ({ book }) => {
     >
       <div className="relative">
         <img
-          src={book.coverUrl}
+          src={import.meta.env.VITE_API_BASE_URL + book.coverUrl}
           alt={book.title}
           className="w-full h-48 object-cover"
         />

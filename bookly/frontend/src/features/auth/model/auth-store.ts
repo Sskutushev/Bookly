@@ -2,15 +2,9 @@
 
 import { create } from 'zustand';
 import { axiosInstance } from '../../../shared/api/axios-instance';
+import { UserProfile } from './types';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  telegram_id?: string;
-  telegram_username?: string;
-}
+type User = UserProfile;
 
 interface AuthState {
   user: User | null;

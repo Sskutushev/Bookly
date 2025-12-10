@@ -26,12 +26,39 @@ export const updateNotificationSettings = async (data: Partial<NotificationSetti
 export const uploadAvatar = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('avatar', file);
-  
+
   const response = await axiosInstance.post('/api/user/avatar', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-  
+
   return response.data.avatarUrl;
+};
+
+// 2FA Functions
+export const setupTwoFactor = async () => {
+  const response = await axiosInstance.post('/api/auth/2fa/setup');
+  return response.data;
+};
+
+export const verifyTwoFactor = async (token: string) => {
+  const response = await axiosInstance.post('/api/auth/2fa/verify', { token });
+  return response.data;
+};
+
+export const disableTwoFactor = async () => {
+  const response = await axiosInstance.post('/api/auth/2fa/disable');
+  return response.data;
+};
+
+// Password Reset Functions
+export const requestPasswordReset = async (email: string) => {
+  const response = await axiosInstance.post('/api/auth/forgot-password', { email });
+  return response.data;
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  const response = await axiosInstance.post(`/api/auth/reset-password/${token}`, { newPassword });
+  return response.data;
 };

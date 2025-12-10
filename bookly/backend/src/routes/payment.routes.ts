@@ -2,6 +2,7 @@
 
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -25,20 +26,50 @@ router.post('/create-invoice', async (req, res) => {
       return res.status(404).json({ message: 'Book not found' });
     }
 
-    // In a real app, you would use Telegram Bot API to create invoice
-    // For now, returning a placeholder invoice link
-    const invoiceLink = `https://t.me/${process.env.BOT_USERNAME}/invoice_${bookId}`;
-    
-    // For demo purposes, we'll return a mock invoice link
-    // In production, you'd call the Telegram Bot API to create a real invoice
-    res.json({
-      invoiceLink: invoiceLink,
-      bookId: book.id,
-      amount: book.price,
-    });
-  } catch (error) {
+    // Create invoice via Telegram Bot API
+    const telegramResponse = await axios.post(
+      `https://api.telegram.org/bot${process.env.BOT_TOKEN}/createInvoiceLink`,
+      {
+        title: book.title.substring(0, 32), // Telegram limit
+        description: `Book: ${book.title} by ${book.author}`.substring(0, 255), // Telegram limit
+        payload: JSON.stringify({ bookId, userId, type: 'book_purchase' }),
+        provider_token: '', // Empty for Telegram Stars
+        currency: 'XTR', // Telegram Stars
+        prices: [
+          {
+            label: book.title.substring(0, 64), // Telegram limit
+            amount: Math.round(book.price * 100) // Convert to cents (smallest unit)
+          }
+        ],
+        photo_url: book.coverUrl,
+        photo_size: 50000, // Size in bytes
+        photo_width: 480,
+        photo_height: 640,
+        need_name: false,
+        need_phone_number: false,
+        need_email: false,
+        need_shipping_address: false,
+        is_flexible: false,
+      }
+    );
+
+    if (telegramResponse.data.ok) {
+      const invoiceLink = telegramResponse.data.result;
+
+      res.json({
+        invoiceLink: invoiceLink,
+        bookId: book.id,
+        amount: book.price,
+      });
+    } else {
+      throw new Error(`Telegram API error: ${telegramResponse.data.description}`);
+    }
+  } catch (error: any) {
     console.error('Create invoice error:', error);
-    res.status(500).json({ message: 'Failed to create invoice' });
+    res.status(500).json({
+      message: 'Failed to create invoice',
+      error: error.message || 'Unknown error occurred'
+    });
   }
 });
 
@@ -63,44 +94,74 @@ router.post('/verify', async (req, res) => {
 // Webhook endpoint for Telegram payment updates
 router.post('/webhook', async (req, res) => {
   try {
-    const { update_type, ...data } = req.body;
+    // Telegram sends updates in different formats, usually as update
+    const update = req.body;
 
-    console.log('Received payment webhook:', update_type, data);
+    // Handle different types of updates
+    if (update.pre_checkout_query) {
+      // Handle pre-checkout query (before user pays)
+      const preCheckoutQuery = update.pre_checkout_query;
 
-    // Handle different types of payment updates
-    switch (update_type) {
-      case 'pre_checkout_query':
-        // Confirm the pre-checkout query
-        // In a real app, you would validate the query and respond to Telegram
-        break;
+      try {
+        // Always answer the pre-checkout query to confirm
+        await axios.post(
+          `https://api.telegram.org/bot${process.env.BOT_TOKEN}/answerPreCheckoutQuery`,
+          {
+            pre_checkout_query_id: preCheckoutQuery.id,
+            ok: true, // Confirm the checkout
+          }
+        );
 
-      case 'successful_payment':
-        // Process successful payment
-        const { invoice_payload, telegram_payment_charge_id } = data;
-        
+        console.log('Pre-checkout query confirmed for:', preCheckoutQuery.invoice_payload);
+      } catch (error) {
+        console.error('Error confirming pre-checkout:', error);
+        // Still respond to Telegram to avoid webhook timeout
+      }
+    }
+    else if (update.message && update.message.successful_payment) {
+      // Handle successful payment
+      const payment = update.message.successful_payment;
+
+      try {
         // Parse the invoice payload
-        const payload = JSON.parse(invoice_payload);
-        const { bookId, userId } = payload;
+        const payload = JSON.parse(payment.invoice_payload);
+        const { bookId, userId, type } = payload;
 
-        // Create a purchase record
-        await prisma.purchase.create({
-          data: {
-            userId: userId,
-            bookId: bookId,
-            amount: data.total_amount / 100, // Convert from cents
-            paymentMethod: 'telegram_stars',
-            status: 'completed',
-            transactionId: telegram_payment_charge_id,
-          },
-        });
+        if (type === 'book_purchase') {
+          // Create a purchase record
+          await prisma.purchase.create({
+            data: {
+              userId: userId,
+              bookId: bookId,
+              amount: payment.total_amount / 100, // Convert from cents
+              paymentMethod: 'telegram_stars',
+              status: 'completed',
+              transactionId: payment.telegram_payment_charge_id,
+            },
+          });
 
-        console.log(`Payment successful for user ${userId}, book ${bookId}`);
-        break;
+          console.log(`Payment successful for user ${userId}, book ${bookId}`);
 
-      default:
-        console.log('Unknown update type:', update_type);
+          // Send confirmation message to user (optional)
+          try {
+            await axios.post(
+              `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`,
+              {
+                chat_id: update.message.from.id,
+                text: `Спасибо за покупку! Книга "${(await prisma.book.findUnique({where: {id: bookId}}))?.title}" теперь доступна в вашей библиотеке.`,
+              }
+            );
+          } catch (msgError) {
+            console.error('Error sending confirmation message:', msgError);
+          }
+        }
+      } catch (error) {
+        console.error('Error processing successful payment:', error);
+        // Log the error but still respond to Telegram
+      }
     }
 
+    // Always return 200 to acknowledge receipt
     res.status(200).json({ message: 'Webhook received' });
   } catch (error) {
     console.error('Webhook error:', error);

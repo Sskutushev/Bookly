@@ -11,6 +11,9 @@ import MyBooksPage from '@/pages/MyBooksPage/MyBooksPage';
 import ProfilePage from '@/pages/ProfilePage/ProfilePage';
 import Reader from '@/features/book-reader/ui/Reader';
 
+// Auth Components
+import PasswordResetForm from '@/features/auth/ui/PasswordResetForm';
+
 // Components
 import Header from '@/widgets/Header/Header';
 import BottomNav from '@/widgets/BottomNav/BottomNav';
@@ -69,6 +72,16 @@ const AnimatedRoutes: React.FC = () => {
             <Reader />
           </AnimatedPage>
         } />
+        <Route path="/forgot-password" element={
+          <AnimatedPage>
+            <PasswordResetForm variant="forgot" />
+          </AnimatedPage>
+        } />
+        <Route path="/reset-password/:token" element={
+          <AnimatedPage>
+            <PasswordResetForm variant="reset" />
+          </AnimatedPage>
+        } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -81,6 +94,11 @@ const App = () => {
 
   // Effect to initialize the app and sync themes
   useEffect(() => {
+    // Ensure a guest ID exists for anonymous users
+    if (!localStorage.getItem('guestId')) {
+      localStorage.setItem('guestId', crypto.randomUUID());
+    }
+
     initAuth();
     const tgData = initTelegramApp();
     if (tgData?.colorScheme) {

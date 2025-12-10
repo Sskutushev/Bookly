@@ -11,15 +11,10 @@ import {
 
 // Components
 import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
+import TwoFactorSetup from '@/features/auth/ui/TwoFactorSetup';
 
 // Types
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  telegram_username?: string;
-}
+import { UserProfile } from '@/features/auth/model/types';
 
 interface Purchase {
   id: string;
@@ -40,6 +35,7 @@ const ProfilePage: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -386,10 +382,13 @@ const ProfilePage: React.FC = () => {
                     </h4>
                     <div className="flex justify-between items-center">
                       <p className="text-text-secondary-light dark:text-text-secondary-light">
-                        Не включена
+                        {profile?.twoFactorEnabled ? 'Включена' : 'Не включена'}
                       </p>
-                      <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button">
-                        Включить 2FA
+                      <button
+                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                        onClick={() => setShowTwoFactorModal(true)}
+                      >
+                        {profile?.twoFactorEnabled ? 'Отключить 2FA' : 'Включить 2FA'}
                       </button>
                     </div>
                   </div>
@@ -847,6 +846,35 @@ const ProfilePage: React.FC = () => {
           {/* Notifications and Help sections would be similar to desktop but simplified for mobile */}
         </div>
       </div>
+
+      {/* 2FA Setup Modal */}
+      {showTwoFactorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                Двухфакторная аутентификация
+              </h3>
+              <button
+                onClick={() => setShowTwoFactorModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <TwoFactorSetup
+              onComplete={() => {
+                setShowTwoFactorModal(false);
+                // Refresh profile data
+                queryClient.invalidateQueries({ queryKey: ['profile'] });
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

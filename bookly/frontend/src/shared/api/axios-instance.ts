@@ -19,10 +19,15 @@ axiosInstance.interceptors.request.use(
       config.headers['X-Telegram-Init-Data'] = tg.initData;
     }
     
-    // Add auth token if available
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // If no auth token, add guest ID if available
+      const guestId = localStorage.getItem('guestId');
+      if (guestId) {
+        config.headers['x-guest-id'] = guestId;
+      }
     }
     
     return config;

@@ -125,7 +125,7 @@ async def send_new_book_notification(application, user_id: int, book: dict, genr
     except Exception as e:
         logger.error(f"Error sending new book notification to user {user_id}: {e}")
 
-async def check_inactive_users(context: ContextTypes.DEFAULT):
+async def check_inactive_users(context: ContextTypes.DEFAULT_TYPE):
     """Check for inactive users and send reminders."""
     try:
         conn = get_db_connection()
@@ -157,7 +157,7 @@ async def check_inactive_users(context: ContextTypes.DEFAULT):
     except Exception as e:
         logger.error(f"Error checking inactive users: {e}")
 
-async def check_unfinished_books(context: ContextTypes.DEFAULT):
+async def check_unfinished_books(context: ContextTypes.DEFAULT_TYPE):
     """Check for unfinished books and send reminders."""
     try:
         conn = get_db_connection()
@@ -190,7 +190,7 @@ async def check_unfinished_books(context: ContextTypes.DEFAULT):
     except Exception as e:
         logger.error(f"Error checking unfinished books: {e}")
 
-async def check_new_books(context: ContextTypes.DEFAULT):
+async def check_new_books(context: ContextTypes.DEFAULT_TYPE):
     """Check for new books in user's favorite genres and send notifications."""
     try:
         conn = get_db_connection()

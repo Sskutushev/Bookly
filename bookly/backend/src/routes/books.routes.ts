@@ -1,7 +1,9 @@
-// backend/src/routes/books.routes.ts
-
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
+
+console.log('--- [DEBUG] Books Router Loaded ---');
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -115,42 +117,39 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get book fragment (first 15 pages)
+// Get book fragment
 router.get('/:id/fragment', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // In a real app, you would extract the first 15 pages from the PDF
-    // For now, returning a placeholder
+    const book = await prisma.book.findUnique({ where: { id } });
+
+    if (!book || !book.pdfUrl) {
+      return res.status(404).json({ message: 'Book file not found' });
+    }
+
+    const filePath = path.join(__dirname, '..', '..', book.pdfUrl);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Book file path does not exist' });
+    }
+
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+    // Extract content from the first <body> tag
+    const bodyMatch = fileContent.match(/<body>(.*?)<\/body>/s);
+    const textContent = bodyMatch ? bodyMatch[1] : fileContent;
+
+    // Clean up XML/HTML tags and truncate
+    const cleanedText = textContent.replace(/<[^>]+>/g, ' ').replace(/\s\s+/g, ' ').trim();
+    const fragment = cleanedText.substring(0, 2000) + (cleanedText.length > 2000 ? '...' : '');
+
     res.json({
-      fragment: 'This is a sample fragment of the book...',
-      totalPages: 15,
+      fragment,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get book fragment error:', error);
     res.status(500).json({ message: 'Failed to fetch book fragment' });
-  }
-});
-
-// Get all genres
-router.get('/genres', async (req, res) => {
-  try {
-    const genres = await prisma.genre.findMany({
-      include: {
-        _count: {
-          select: { books: true },
-        },
-      },
-    });
-
-    res.json(genres.map(genre => ({
-      id: genre.id,
-      name: genre.name,
-      bookCount: genre._count.books,
-    })));
-  } catch (error) {
-    console.error('Get genres error:', error);
-    res.status(500).json({ message: 'Failed to fetch genres' });
   }
 });
 

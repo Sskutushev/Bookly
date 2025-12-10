@@ -1,13 +1,15 @@
+// backend/src/routes/auth.routes.ts
+
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import { validateTelegramWebAppData } from '../middleware/telegram-auth';
 import { generateTwoFactorSecret, verifyTwoFactorToken, generateTwoFactorQR } from '../services/two-factor.service';
-import { 
-  generatePasswordResetToken, 
-  resetPassword, 
-  sendPasswordResetEmail 
+import {
+  generatePasswordResetToken,
+  resetPassword,
+  sendPasswordResetEmail
 } from '../services/password-reset.service';
 
 const router = Router();
@@ -16,7 +18,7 @@ const prisma = new PrismaClient();
 // Telegram authentication
 router.post('/telegram', async (req, res) => {
   try {
-    const { initData, guestId } = req.body;
+    const { initData } = req.body;
 
     if (!initData) {
       return res.status(400).json({ message: 'Init data is required' });
@@ -24,42 +26,20 @@ router.post('/telegram', async (req, res) => {
 
     // Validate Telegram init data
     const telegramUser = validateTelegramWebAppData(initData);
-    const telegramId = telegramUser.id.toString();
 
     // Find or create user
     let user = await prisma.user.findUnique({
-      where: { telegram_id: telegramId },
+      where: { telegram_id: telegramUser.id.toString() },
     });
 
-    if (!user && guestId) {
-      // If no user with this telegramId exists, try to find the guest user and upgrade them
-      const guestUser = await prisma.user.findUnique({
-        where: { guestId: guestId },
-      });
-
-      if (guestUser) {
-        // Upgrade guest to full user
-        user = await prisma.user.update({
-          where: { id: guestUser.id },
-          data: {
-            telegram_id: telegramId,
-            name: telegramUser.first_name + (telegramUser.last_name ? ' ' + telegramUser.last_name : ''),
-            telegram_username: telegramUser.username || '',
-            email: guestUser.email.includes('@guest.bookly.app') ? `${telegramId}@bookly.telegram` : guestUser.email, // Replace dummy email
-            guestId: null, // Clear the guestId
-          },
-        });
-      }
-    }
-
     if (!user) {
-      // If still no user, create a new one from scratch
+      // Create new user
       user = await prisma.user.create({
         data: {
-          telegram_id: telegramId,
+          telegram_id: telegramUser.id.toString(),
           name: telegramUser.first_name + (telegramUser.last_name ? ' ' + telegramUser.last_name : ''),
           telegram_username: telegramUser.username || '',
-          email: `${telegramId}@bookly.telegram`,
+          email: `${telegramUser.id}@bookly.telegram`,
         },
       });
     }
@@ -122,8 +102,7 @@ router.post('/refresh', async (req, res) => {
       where: { id: decoded.userId },
     });
 
-    // Check refresh token without accessing non-existent field
-    if (!user) {
+    if (!user || user.refresh_token !== refreshToken) {
       return res.status(403).json({ message: 'Invalid refresh token' });
     }
 
@@ -272,7 +251,7 @@ router.post('/2fa/authenticate', async (req, res) => {
       where: { id: userId },
     });
 
-    if (!user || !user.twoFactorSecret) {
+    if (!user || !user.twoFactorSecret || !user.twoFactorEnabled) {
       return res.status(400).json({ message: '2FA not enabled for this user' });
     }
 
@@ -306,6 +285,44 @@ router.post('/2fa/authenticate', async (req, res) => {
   } catch (error) {
     console.error('2FA authenticate error:', error);
     res.status(500).json({ message: '2FA authentication failed' });
+  }
+});
+
+// Registration (for non-Telegram users)
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Validate input
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ message: 'User already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+      },
+    });
+
+    res.status(201).json({ message: 'User created successfully' });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Registration failed' });
   }
 });
 
@@ -353,44 +370,6 @@ router.post('/reset-password/:token', async (req, res) => {
   } catch (error: any) {
     console.error('Reset password error:', error);
     res.status(500).json({ message: error.message || 'Password reset failed' });
-  }
-});
-
-// Registration (for non-Telegram users)
-router.post('/register', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    // Validate input
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return res.status(409).json({ message: 'User already exists' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
-    });
-
-    res.status(201).json({ message: 'User created successfully' });
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Registration failed' });
   }
 });
 

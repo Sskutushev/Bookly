@@ -1,52 +1,80 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+// FB2 Parser
+import { parseFB2Content } from '../utils/fb2-parser';
 
 // API
 import { 
   getBookForReading, 
   getReadingProgress, 
-  updateReadingProgress 
+  updateReadingProgress,
+  getBookFragment,
+  fetchBookContent,
 } from '@/features/book-reader/api/reader-api';
 
 // Components
 import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
 import SettingsModal from './SettingsModal';
 
+
 // Types
 import { Book } from '@/entities/book/model/types';
 
-// Set up pdfjs worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-
 const Reader: React.FC = () => {
   const { bookId } = useParams<{ bookId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const isExcerpt = searchParams.get('excerpt') === 'true';
+
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [scale, setScale] = useState<number>(1.0);
+  const [scale, setScale] = useState<number>(1.0); // This can be repurposed for font size
   const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>('light');
   const [fontFamily, setFontFamily] = useState<'serif' | 'sans' | 'mono'>('serif');
   
   const documentRef = useRef<HTMLDivElement>(null);
 
-  // Fetch book and progress data
-  const { data: book, isLoading: bookLoading } = useQuery<Book>({
+  // Query for the book fragment
+  const { data: fragment, isLoading: isFragmentLoading } = useQuery({
+    queryKey: ['bookFragment', bookId],
+    queryFn: () => getBookFragment(bookId!),
+    enabled: !!bookId && isExcerpt,
+  });
+
+  // Query for the full book metadata (which includes the content URL)
+  const { data: book, isLoading: isBookMetaLoading } = useQuery<any>({
     queryKey: ['book', bookId],
     queryFn: () => getBookForReading(bookId!),
-    enabled: !!bookId,
+    enabled: !!bookId && !isExcerpt,
   });
+
+  // Query to fetch the actual .fb2 content from the URL provided by the metadata
+  const { data: fb2Content, isLoading: isFb2ContentLoading } = useQuery({
+    queryKey: ['bookContent', book?.contentUrl],
+    queryFn: () => fetchBookContent(book.contentUrl),
+    enabled: !!book?.contentUrl && !isExcerpt,
+  });
+
+  const parsedBook = useMemo(() => {
+    if (!fb2Content) return null;
+    return parseFB2Content(fb2Content);
+  }, [fb2Content]);
+
+  useEffect(() => {
+    if (parsedBook) {
+      setNumPages(parsedBook.sections.length);
+    }
+  }, [parsedBook]);
 
   const { data: progress } = useQuery({
     queryKey: ['reading-progress', bookId],
     queryFn: () => getReadingProgress(bookId!),
-    enabled: !!bookId,
+    enabled: !!bookId && !isExcerpt, // Only track progress for full book
   });
 
   // Update page number when progress changes
@@ -81,12 +109,6 @@ const Reader: React.FC = () => {
 
     return () => clearTimeout(timeoutId);
   }, [pageNumber, bookId, numPages, updateProgressMutation]);
-
-  // Handle PDF load success
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setIsLoading(false);
-  };
 
   // Navigation functions
   const goToPrevPage = () => {
@@ -147,7 +169,7 @@ const Reader: React.FC = () => {
     }
   }, [theme]);
 
-  if (bookLoading || isLoading) {
+  if ((isExcerpt && isFragmentLoading) || (!isExcerpt && (isBookMetaLoading || isFb2ContentLoading))) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-bg-light dark:bg-bg-dark">
         <div className="text-center">
@@ -158,12 +180,50 @@ const Reader: React.FC = () => {
     );
   }
 
+  // --- Excerpt Viewer ---
+  if (isExcerpt) {
+    return (
+      <div 
+        className="min-h-screen bg-bg-light dark:bg-bg-dark text-text-primary-light dark:text-text-primary-dark"
+        style={{ fontFamily }}
+      >
+        <header className="fixed top-0 left-0 right-0 z-20 backdrop-blur-md bg-white/80 dark:bg-bg-dark/80 border-b border-gray-200 dark:border-gray-700">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <button 
+              onClick={() => navigate(-1)}
+              className="flex items-center text-primary-light dark:text-primary-dark"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Назад
+            </button>
+            <h1 className="text-sm font-medium truncate max-w-[60%]">
+              Отрывок: {book?.title || ''}
+            </h1>
+            <div className="w-12"></div> {/* Spacer */}
+          </div>
+        </header>
+        <main className="pt-20 pb-10 px-4 md:px-8 lg:px-12">
+          <div className="prose dark:prose-invert max-w-full whitespace-pre-wrap">
+            {fragment}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // --- Full FB2 Reader ---
   return (
     <div 
       className="min-h-screen bg-bg-light dark:bg-bg-dark text-text-primary-light dark:text-text-primary-dark"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      style={{ 
+        fontFamily: fontFamily === 'serif' ? 'Georgia, serif' : 
+                   fontFamily === 'mono' ? 'Monaco, monospace' : 'Arial, sans-serif'
+      }}
     >
       <TelegramBackButton />
       
@@ -196,33 +256,19 @@ const Reader: React.FC = () => {
         </div>
       </header>
 
-      {/* PDF Viewer */}
-      <div 
+      {/* FB2 Content Viewer */}
+      <main 
         ref={documentRef}
-        className="pt-16 pb-20 h-[calc(100vh-8rem)] flex items-center justify-center bg-bg-light dark:bg-bg-dark"
-        style={{ 
-          fontFamily: fontFamily === 'serif' ? 'Georgia, serif' : 
-                     fontFamily === 'mono' ? 'Monaco, monospace' : 'Arial, sans-serif'
-        }}
+        className="pt-20 pb-24 px-4 md:px-8 lg:px-12 h-screen overflow-y-auto"
       >
-        {book?.contentUrl && (
-          <Document
-            file={book.contentUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            loading={<div className="text-text-primary-light dark:text-text-primary-dark">Загрузка документа...</div>}
-            error={<div className="text-red-500">Ошибка загрузки документа</div>}
-          >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              width={documentRef.current ? documentRef.current.clientWidth * 0.8 : 500}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              className="shadow-lg rounded"
-            />
-          </Document>
+        {parsedBook && parsedBook.sections.length > 0 ? (
+          <div className="prose dark:prose-invert max-w-full whitespace-pre-wrap" style={{ transform: `scale(${scale})`}}>
+            {parsedBook.sections[pageNumber - 1]}
+          </div>
+        ) : (
+          <div className="text-center">Книга пуста или не удалось ее разобрать.</div>
         )}
-      </div>
+      </main>
 
       {/* Footer with navigation and progress */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-bg-dark/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 py-3">

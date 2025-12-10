@@ -3,6 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 // Components
 import PaymentModal from '@/features/payment/ui/PaymentModal';
@@ -22,6 +23,7 @@ interface BookModalProps {
 const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const favoriteMutation = useMutation({
     mutationFn: async () => {
@@ -44,17 +46,13 @@ const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => 
   });
 
   const handleReadClick = () => {
-    if (book.isFree) {
+    if (book.isFree || book.isPurchased) {
       // Add to user's books and navigate to reader
-      onBookAdded();
+      onBookAdded(book.id);
       onClose();
     } else if (!book.isPurchased) {
       // Open payment modal
       setIsPaymentModalOpen(true);
-    } else {
-      // Navigate to reader
-      onBookAdded();
-      onClose();
     }
   };
 
@@ -118,57 +116,69 @@ const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => 
                   <div className="mt-4 flex flex-col md:flex-row gap-4">
                     <div className="flex-shrink-0">
                       <img
-                        src={book.coverUrl}
+                        src={import.meta.env.VITE_API_BASE_URL + book.coverUrl}
                         alt={book.title}
                         className="w-40 h-56 object-cover rounded-card"
                       />
                     </div>
                     
-                    <div className="flex-1">
-                      <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark">
-                        {book.author}
-                      </h4>
-                      
-                      <p className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                        {book.description.length > 100 
-                          ? `${book.description.substring(0, 100)}...` 
-                          : book.description}
-                      </p>
-                      
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {book.genres.map((genre) => (
-                          <span
-                            key={genre.id}
-                            className="px-2 py-1 bg-primary-light/10 dark:bg-primary-dark/10 text-primary-light dark:text-primary-dark text-xs rounded-element"
+                                                                <div className="flex-1">
+                                                                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                                                                    {book.author}
+                                                                  </h4>
+                                                                  
+                                                                  {book.genres && book.genres.length > 0 && (
+                                                                    <div className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                                                                      <span className="font-medium">Жанры: </span>
+                                                                      {book.genres.map((genre, index) => (
+                                                                        <React.Fragment key={genre.id}>
+                                                                          {genre.name}{index < book.genres.length - 1 ? ', ' : ''}
+                                                                        </React.Fragment>
+                                                                      ))}
+                                                                    </div>
+                                                                  )}
+                                          
+                                                                  <div className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                                                                    <span className="font-medium">Описание: </span>
+                                                                    <p className="mt-1 inline">
+                                                                      {book.description.length > 200 
+                                                                        ? `${book.description.substring(0, 200)}...` 
+                                                                        : book.description}
+                                                                    </p>
+                                                                  </div>                      <div className="mt-4 flex items-center gap-2">
+                        {book.isFree || book.isPurchased ? (
+                          <>
+                            <button
+                              type="button"
+                              className="flex-1 px-3 py-2 text-sm rounded-button bg-gray-200 dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark"
+                              onClick={() => navigate(`/reader/${book.id}?excerpt=true`)}
+                            >
+                              Отрывок
+                            </button>
+                            <button
+                              type="button"
+                              className="flex-1 px-3 py-2 text-sm rounded-button bg-primary-light dark:bg-primary-dark text-white"
+                              onClick={handleReadClick}
+                            >
+                              Читать
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="flex-1 px-4 py-2 rounded-button bg-primary-light dark:bg-primary-dark text-white"
+                            onClick={handleReadClick}
                           >
-                            {genre.name}
-                          </span>
-                        ))}
-                      </div>
-                      
-                      <div className="mt-4 flex gap-2">
-                        <button
-                          type="button"
-                          className={`flex-1 px-4 py-2 rounded-button ${
-                            book.isPurchased 
-                              ? 'bg-green-500 text-white' 
-                              : 'bg-primary-light dark:bg-primary-dark text-white'
-                          }`}
-                          onClick={handleReadClick}
-                        >
-                          {book.isFree 
-                            ? 'Читать' 
-                            : book.isPurchased 
-                              ? 'Читать' 
-                              : 'Купить'}
-                        </button>
+                            Купить
+                          </button>
+                        )}
                         
                         <button
                           type="button"
-                          className={`px-4 py-2 rounded-button ${
+                          className={`p-2 rounded-full ${
                             book.isFavorite 
-                              ? 'bg-red-500 text-white' 
-                              : 'bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
+                              ? 'bg-red-100 dark:bg-red-900/50 text-red-500' 
+                              : 'bg-gray-200 dark:bg-gray-700 text-text-secondary-light dark:text-text-secondary-dark'
                           }`}
                           onClick={() => favoriteMutation.mutate()}
                           disabled={favoriteMutation.isPending}
@@ -177,8 +187,7 @@ const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => 
                             xmlns="http://www.w3.org/2000/svg"
                             className="h-5 w-5"
                             viewBox="0 0 20 20"
-                            fill={book.isFavorite ? "currentColor" : "none"}
-                            stroke="currentColor"
+                            fill="currentColor"
                           >
                             <path
                               fillRule="evenodd"

@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
 import authRoutes from './routes/auth.routes.ts';
@@ -11,6 +12,9 @@ import userRoutes from './routes/user.routes.ts';
 import paymentRoutes from './routes/payment.routes.ts';
 import favoritesRoutes from './routes/favorites.routes.ts';
 import myBooksRoutes from './routes/my-books.routes.ts';
+import genresRoutes from './routes/genres.routes.ts';
+import { jwtAuthMiddleware } from './middleware/jwt-auth.ts';
+import { guestOrAuthMiddleware } from './middleware/guest-auth.ts';
 
 dotenv.config();
 
@@ -21,6 +25,9 @@ if (!process.env.DATABASE_URL) {
 
 const app = express();
 const prisma = new PrismaClient();
+
+// Serve static files from the uploads directory, making covers and books available.
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Security middleware
 app.use(helmet());
@@ -68,6 +75,11 @@ app.get('/health', async (req: Request, res: Response) => {
   }
 });
 
+// Authentication & Guest Middleware
+app.use(jwtAuthMiddleware);
+app.use(guestOrAuthMiddleware);
+
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/books', booksRoutes);
@@ -75,6 +87,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/favorites', favoritesRoutes);
 app.use('/api/my-books', myBooksRoutes);
+app.use('/api/genres', genresRoutes);
 
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

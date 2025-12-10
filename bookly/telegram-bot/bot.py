@@ -25,7 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Command handlers
-async def start(update: Update, context: ContextTypes.DEFAULT) -> None:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
     await update.message.reply_html(
@@ -42,7 +42,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT) -> None:
         )
     )
 
-async def library(update: Update, context: ContextTypes.DEFAULT) -> None:
+async def library(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Open the library Mini App."""
     await update.message.reply_text(
         'Откройте вашу библиотеку в Mini App:',
@@ -54,7 +54,7 @@ async def library(update: Update, context: ContextTypes.DEFAULT) -> None:
         )
     )
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT) -> None:
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     await update.message.reply_text(
         '📖 Справка по боту Bookly:\n\n'
@@ -66,7 +66,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT) -> None:
         'которые открывают Mini App.'
     )
 
-async def open_mini_app(update: Update, context: ContextTypes.DEFAULT) -> None:
+async def open_mini_app(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Open the main Mini App."""
     await update.message.reply_text(
         'Откройте Bookly:',

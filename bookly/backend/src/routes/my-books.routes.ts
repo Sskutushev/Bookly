@@ -27,11 +27,6 @@ router.get('/', async (req, res) => {
             genres: true,
           },
         },
-        readingProgress: {
-          where: {
-            userId,
-          },
-        },
       },
     });
 
@@ -52,21 +47,36 @@ router.get('/', async (req, res) => {
       },
     });
 
-    // Combine both lists
-    const allBooks = [...purchasedBooks, ...freeBooksWithProgress.map(rp => ({
-      book: rp.book,
-      readingProgress: [rp],
-    }))];
-
     // Format the response to include progress information
-    const booksWithProgress = allBooks.map(item => {
-      const progress = item.readingProgress?.[0];
-      return {
+    const booksWithProgress = [];
+
+    // Add purchased books with progress
+    for (const item of purchasedBooks) {
+      // Get reading progress for this book
+      const progress = await prisma.readingProgress.findUnique({
+        where: {
+          userId_bookId: {
+            userId,
+            bookId: item.bookId,
+          },
+        },
+      });
+
+      booksWithProgress.push({
         ...item.book,
         progress: progress ? progress.progress : 0,
         currentPage: progress ? progress.currentPage : 1,
-      };
-    });
+      });
+    }
+
+    // Add free books with progress
+    for (const rp of freeBooksWithProgress) {
+      booksWithProgress.push({
+        ...rp.book,
+        progress: rp.progress,
+        currentPage: rp.currentPage,
+      });
+    }
 
     res.json(booksWithProgress);
   } catch (error) {
@@ -113,12 +123,16 @@ router.get('/:bookId/read', async (req, res) => {
       return res.status(403).json({ message: 'You do not have access to this book' });
     }
 
-    // Return book content (in a real app, you would return a signed URL or stream the PDF)
+    // Return book content (in a real app, you would return a signed URL or stream the content)
     res.json({
       bookId: book.id,
       title: book.title,
       author: book.author,
-      contentUrl: book.pdfUrl, // In a real app, this would be a signed URL
+      description: book.description,
+      coverUrl: book.coverUrl,
+      contentUrl: book.pdfUrl, // This can point to .fb2 files as well
+      isFree: book.isFree,
+      price: book.price,
     });
   } catch (error) {
     console.error('Get book for reading error:', error);
@@ -192,6 +206,60 @@ router.get('/:bookId/progress', async (req, res) => {
   } catch (error) {
     console.error('Get reading progress error:', error);
     res.status(500).json({ message: 'Failed to fetch reading progress' });
+  }
+});
+
+// Add a book to user's library (creates initial reading progress)
+router.post('/:bookId/add', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { bookId } = req.params;
+
+    if (!userId || !bookId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const book = await prisma.book.findUnique({
+      where: { id: bookId },
+    });
+
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Check if user has access to the book
+    let hasAccess = book.isFree;
+    if (!hasAccess) {
+      const purchase = await prisma.purchase.findFirst({
+        where: { userId, bookId, status: 'completed' },
+      });
+      hasAccess = !!purchase;
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'You do not have access to this book' });
+    }
+
+    // Create or update reading progress
+    const readingProgress = await prisma.readingProgress.upsert({
+      where: {
+        userId_bookId: { userId, bookId },
+      },
+      update: {
+        lastReadAt: new Date(),
+      },
+      create: {
+        userId,
+        bookId,
+        currentPage: 1,
+        progress: 0,
+      },
+    });
+
+    res.status(200).json({ message: 'Book added to library', readingProgress });
+  } catch (error) {
+    console.error('Add book to library error:', error);
+    res.status(500).json({ message: 'Failed to add book to library' });
   }
 });
 

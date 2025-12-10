@@ -1,0 +1,89 @@
+-- Проверяем, какие таблицы уже существуют
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+
+-- Добавим нужные поля к User если они не существуют
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "refresh_token" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "twoFactorEnabled" BOOLEAN DEFAULT FALSE;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "resetPasswordToken" TEXT;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "resetPasswordExpires" TIMESTAMP;
+
+-- Создаем таблицы, если они не существуют
+CREATE TABLE IF NOT EXISTS "Genre" (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  name TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "Book" (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
+  description TEXT NOT NULL,
+  coverUrl TEXT NOT NULL,
+  pdfUrl TEXT NOT NULL,
+  price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  isFree BOOLEAN DEFAULT false,
+  pageCount INTEGER NOT NULL,
+  createdAt TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS "Favorite" (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  userId TEXT NOT NULL,
+  bookId TEXT NOT NULL,
+  createdAt TIMESTAMP DEFAULT NOW(),
+  FOREIGN KEY (userId) REFERENCES "User"(id) ON DELETE CASCADE,
+  FOREIGN KEY (bookId) REFERENCES "Book"(id) ON DELETE CASCADE,
+  UNIQUE(userId, bookId)
+);
+
+CREATE TABLE IF NOT EXISTS "Purchase" (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  userId TEXT NOT NULL,
+  bookId TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  paymentMethod TEXT NOT NULL,
+  status TEXT NOT NULL,
+  transactionId TEXT,
+  createdAt TIMESTAMP DEFAULT NOW(),
+  FOREIGN KEY (userId) REFERENCES "User"(id) ON DELETE CASCADE,
+  FOREIGN KEY (bookId) REFERENCES "Book"(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "ReadingProgress" (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  userId TEXT NOT NULL,
+  bookId TEXT NOT NULL,
+  currentPage INTEGER DEFAULT 1,
+  progress DECIMAL(5,2) DEFAULT 0,
+  lastReadAt TIMESTAMP DEFAULT NOW(),
+  FOREIGN KEY (userId) REFERENCES "User"(id) ON DELETE CASCADE,
+  FOREIGN KEY (bookId) REFERENCES "Book"(id) ON DELETE CASCADE,
+  UNIQUE(userId, bookId)
+);
+
+CREATE TABLE IF NOT EXISTS "NotificationSettings" (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  userId TEXT UNIQUE NOT NULL,
+  newBooksInGenre BOOLEAN DEFAULT true,
+  unfinishedReminder BOOLEAN DEFAULT true,
+  specialOffers BOOLEAN DEFAULT true,
+  newsAndUpdates BOOLEAN DEFAULT false,
+  frequency TEXT DEFAULT '3days',
+  telegramEnabled BOOLEAN DEFAULT true,
+  FOREIGN KEY (userId) REFERENCES "User"(id) ON DELETE CASCADE
+);
+
+-- Добавим связь Many-to-Many между Book и Genre если не существует
+CREATE TABLE IF NOT EXISTS "_BookToGenre" (
+  "A" TEXT NOT NULL,
+  "B" TEXT NOT NULL,
+  FOREIGN KEY ("A") REFERENCES "Book"(id) ON DELETE CASCADE,
+  FOREIGN KEY ("B") REFERENCES "Genre"(id) ON DELETE CASCADE,
+  UNIQUE("A", "B")
+);
+
+-- Добавим нужные индексы если не существуют
+CREATE INDEX IF NOT EXISTS idx_user_telegram_id ON "User"(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_favorite_user_id ON "Favorite"(userId);
+CREATE INDEX IF NOT EXISTS idx_purchase_user_id ON "Purchase"(userId);
+CREATE INDEX IF NOT EXISTS idx_reading_progress_user_id ON "ReadingProgress"(userId);

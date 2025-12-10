@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 // Components
 import BookCard from '@/entities/book/ui/BookCard';
@@ -9,6 +10,7 @@ import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
 import { getBooks, getGenres } from '@/entities/book/api/book-api';
+import { addBookToMyBooks } from '@/features/book-reader/api/reader-api';
 
 // Types
 import { Book } from '@/entities/book/model/types';
@@ -16,6 +18,8 @@ import { Book } from '@/entities/book/model/types';
 const HomePage: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch genres
   const { data: genres = [] } = useQuery({
@@ -29,6 +33,19 @@ const HomePage: React.FC = () => {
     queryFn: () => getBooks({
       genre: selectedGenre !== 'all' ? selectedGenre : undefined,
     }),
+  });
+
+  const addBookToMyBooksMutation = useMutation({
+    mutationFn: (bookId: string) => addBookToMyBooks(bookId),
+    onSuccess: (data, bookId) => {
+      queryClient.invalidateQueries({ queryKey: ['my-books'] });
+      queryClient.invalidateQueries({ queryKey: ['reading-progress', bookId] });
+      toast.success('Книга добавлена в библиотеку!');
+      navigate(`/reader/${bookId}`);
+    },
+    onError: () => {
+      toast.error('Ошибка при добавлении книги в библиотеку');
+    },
   });
 
   const handleBookClick = (book: Book) => {
@@ -108,7 +125,7 @@ const HomePage: React.FC = () => {
         <BookModal 
           book={selectedBook} 
           onClose={handleCloseModal} 
-          onBookAdded={() => toast.success('Книга добавлена в библиотеку!')}
+          onBookAdded={(bookId) => addBookToMyBooksMutation.mutate(bookId)}
         />
       )}
     </div>

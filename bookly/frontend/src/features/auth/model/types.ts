@@ -7,6 +7,7 @@ export interface UserProfile {
   avatar?: string;
   telegram_id?: string;
   telegram_username?: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface Purchase {
