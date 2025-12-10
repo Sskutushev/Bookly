@@ -39,9 +39,27 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// --- CORS Configuration (Allow ALL origins for debugging) ---
-app.use(cors());
-app.options('*', cors()); // Handle preflight requests
+// --- CORS Configuration ---
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://bookly-bot.vercel.app',
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
