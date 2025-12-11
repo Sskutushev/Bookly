@@ -74,12 +74,33 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 200
 };
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Special handling for preflight requests before authentication
+app.options('*', (req: Request, res: Response) => {
+  // Set CORS headers for preflight
+  if (!req.header('origin')) {
+    res.status(200).send();
+    return;
+  }
+
+  const origin = req.header('origin');
+  if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', 'https://web.telegram.org');
+  }
+
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
+// Enable CORS for all routes before authentication
+app.use(cors(corsOptions));
 
 // Database connection check
 app.get('/health', async (req: Request, res: Response) => {
@@ -91,10 +112,9 @@ app.get('/health', async (req: Request, res: Response) => {
   }
 });
 
-// Authentication & Guest Middleware
+// Authentication & Guest Middleware - applied after CORS
 app.use(jwtAuthMiddleware);
 app.use(guestOrAuthMiddleware);
-
 
 // Routes
 app.use('/api/auth', authRoutes);
