@@ -57,13 +57,14 @@ const ProfilePage: React.FC = () => {
     queryFn: getUserPurchases,
   });
 
+  // Note: updateProfileMutation is defined but intentionally unused for now, kept for future use
   // Update profile mutation (for name and avatar)
   const updateProfileMutation = useMutation({
     mutationFn: updateUserProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
-  }); // Note: Only used for name/avatar, not email/password
+  });
 
   // Update email mutation
   const updateEmailMutation = useMutation({
@@ -144,8 +145,9 @@ const ProfilePage: React.FC = () => {
             <AvatarUpload
               currentAvatar={profile?.avatar}
               userName={profile?.name}
-              onAvatarUpdate={(avatarUrl) => {
+              onAvatarUpdate={(avatarUrl: string) => {
                 // Update local state if needed
+                console.log('Avatar updated:', avatarUrl); // Just to use the parameter
               }}
             />
             <div className="mt-4 text-center">

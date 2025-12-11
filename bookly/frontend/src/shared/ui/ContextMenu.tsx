@@ -1,6 +1,6 @@
 // frontend/src/shared/ui/ContextMenu.tsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 
