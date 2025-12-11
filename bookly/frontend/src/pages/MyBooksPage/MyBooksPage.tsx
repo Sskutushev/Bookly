@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 // Components
+import BookCard from '@/entities/book/ui/BookCard';
 import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
-import { getMyBooks } from '@/features/book-reader/api/reader-api';
+import { getMyBooks, deleteBookFromLibrary } from '@/features/book-reader/api/reader-api';
+import { addToFavorites, removeFromFavorites } from '@/entities/book/api/book-api';
 
 // Types
 import { Book } from '@/entities/book/model/types';
@@ -14,11 +17,41 @@ import { Book } from '@/entities/book/model/types';
 const MyBooksPage: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'reading' | 'finished' | 'purchased'>('all');
+  const queryClient = useQueryClient();
 
   // Fetch user's books
   const { data: books = [], isLoading } = useQuery({
     queryKey: ['my-books', activeTab],
     queryFn: getMyBooks,
+  });
+
+  const deleteBookMutation = useMutation({
+    mutationFn: (bookId: string) => deleteBookFromLibrary(bookId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-books'] });
+      toast.success('Книга удалена из библиотеки');
+    },
+    onError: () => {
+      toast.error('Ошибка при удалении книги');
+    }
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: async ({ bookId, isFavorite }: { bookId: string; isFavorite: boolean }) => {
+      if (isFavorite) {
+        return removeFromFavorites(bookId);
+      } else {
+        return addToFavorites(bookId);
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['my-books'] });
+      queryClient.invalidateQueries({ queryKey: ['book', variables.bookId] });
+      toast.success(variables.isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    },
+    onError: () => {
+      toast.error('Ошибка при изменении избранного');
+    }
   });
 
   // Filter books based on active tab
@@ -37,6 +70,18 @@ const MyBooksPage: React.FC = () => {
 
   const handleCloseModal = () => {
     setSelectedBook(null);
+  };
+
+  const handleAddToFavorite = (bookId: string) => {
+    favoriteMutation.mutate({ bookId, isFavorite: false });
+  };
+
+  const handleRemoveFromFavorite = (bookId: string) => {
+    favoriteMutation.mutate({ bookId, isFavorite: true });
+  };
+
+  const handleDeleteFromLibrary = (bookId: string) => {
+    deleteBookMutation.mutate(bookId);
   };
 
   return (
@@ -77,14 +122,14 @@ const MyBooksPage: React.FC = () => {
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[...Array(6)].map((_, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="bg-white dark:bg-gray-800 rounded-card shadow p-4 animate-pulse"
               >
                 <div className="bg-gray-200 dark:bg-gray-700 h-48 rounded mb-3 relative">
                   <div className="absolute bottom-2 left-2 right-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full">
-                    <div 
-                      className="h-full bg-primary-light dark:bg-primary-dark rounded-full" 
+                    <div
+                      className="h-full bg-primary-light dark:bg-primary-dark rounded-full"
                       style={{ width: '60%' }}
                     ></div>
                   </div>
@@ -104,37 +149,12 @@ const MyBooksPage: React.FC = () => {
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={() => handleBookClick(book)}
               >
-                <div className="bg-white dark:bg-gray-800 rounded-card shadow overflow-hidden relative group">
-                  <div className="relative">
-                    <img
-                      src={book.coverUrl}
-                      alt={book.title}
-                      className="w-full h-48 object-cover"
-                    />
-                    
-                    {/* Progress indicator */}
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <div className="h-2 bg-white/80 dark:bg-gray-700/80 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary-light dark:bg-primary-dark" 
-                          style={{ width: `${book.progress || 0}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-white mt-1 text-center">
-                        {book.progress || 0}%
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3">
-                    <h3 className="font-semibold text-text-primary-light dark:text-text-primary-dark truncate">
-                      {book.title}
-                    </h3>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark truncate">
-                      {book.author}
-                    </p>
-                  </div>
-                </div>
+                <BookCard
+                  book={book}
+                  onAddToFavorite={handleAddToFavorite}
+                  onRemoveFromFavorite={handleRemoveFromFavorite}
+                  onDeleteFromLibrary={handleDeleteFromLibrary}
+                />
               </motion.div>
             ))}
           </div>
@@ -147,7 +167,7 @@ const MyBooksPage: React.FC = () => {
             <p className="text-text-secondary-light dark:text-text-secondary-dark mb-4">
               Купите или начните читать книги
             </p>
-            <button 
+            <button
               className="px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
               onClick={() => window.location.href = '/'}
             >
@@ -159,10 +179,10 @@ const MyBooksPage: React.FC = () => {
 
       {/* Book Modal */}
       {selectedBook && (
-        <BookModal 
-          book={selectedBook} 
-          onClose={handleCloseModal} 
-          onBookAdded={() => {}} 
+        <BookModal
+          book={selectedBook}
+          onClose={handleCloseModal}
+          onBookAdded={() => {}}
         />
       )}
     </div>

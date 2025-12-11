@@ -44,3 +44,8 @@ export const addBookToMyBooks = async (bookId: string): Promise<any> => {
   const response = await axiosInstance.post(`/api/my-books/${bookId}/add`);
   return response.data;
 };
+
+export const deleteBookFromLibrary = async (bookId: string): Promise<any> => {
+  const response = await axiosInstance.delete(`/api/my-books/${bookId}`);
+  return response.data;
+};

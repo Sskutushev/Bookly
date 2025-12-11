@@ -1,4 +1,11 @@
-import React from 'react';
+// frontend/src/features/book-reader/ui/SettingsModal.tsx
+
+import React, { useState, useEffect } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
+
+// Telegram storage for saving settings
+import { set, get } from '@/shared/lib/telegram-storage';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,115 +28,206 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   fontFamily,
   setFontFamily,
 }) => {
-  if (!isOpen) return null;
+  const [localScale, setLocalScale] = useState(scale);
+  const [localTheme, setLocalTheme] = useState(theme);
+  const [localFontFamily, setLocalFontFamily] = useState(fontFamily);
+
+  // Load settings from Telegram CloudStorage on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedScale = await get('reader_scale');
+        const savedTheme = await get('reader_theme');
+        const savedFontFamily = await get('reader_font_family');
+
+        if (savedScale) setLocalScale(parseFloat(savedScale));
+        if (savedTheme) setLocalTheme(savedTheme as 'light' | 'dark' | 'sepia');
+        if (savedFontFamily) setLocalFontFamily(savedFontFamily as 'serif' | 'sans' | 'mono');
+      } catch (error) {
+        console.error('Error loading reader settings:', error);
+      }
+    };
+
+    if (isOpen) {
+      loadSettings();
+    }
+  }, [isOpen]);
+
+  const handleSave = async () => {
+    setScale(localScale);
+    setTheme(localTheme);
+    setFontFamily(localFontFamily);
+
+    // Save to Telegram CloudStorage
+    try {
+      await set('reader_scale', localScale.toString());
+      await set('reader_theme', localTheme);
+      await set('reader_font_family', localFontFamily);
+    } catch (error) {
+      console.error('Error saving reader settings:', error);
+    }
+
+    onClose();
+  };
+
+  const handleReset = () => {
+    setLocalScale(1.0);
+    setLocalTheme('light');
+    setLocalFontFamily('serif');
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
-            Настройки чтения
-          </h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <div className="space-y-6">
-          {/* Font Size */}
-          <div>
-            <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-3">
-              Размер текста
-            </h4>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => setScale(Math.max(0.8, scale - 0.1))}
-                className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
-              >
-                A-
-              </button>
-              <span className="text-text-primary-light dark:text-text-primary-dark">
-                {Math.round(scale * 100)}%
-              </span>
-              <button 
-                onClick={() => setScale(Math.min(1.5, scale + 0.1))}
-                className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
-              >
-                A+
-              </button>
-            </div>
-          </div>
-          
-          {/* Font Family */}
-          <div>
-            <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-3">
-              Шрифт
-            </h4>
-            <div className="grid grid-cols-3 gap-2">
-              {(['serif', 'sans', 'mono'] as const).map((font) => (
-                <button
-                  key={font}
-                  type="button"
-                  className={`py-2 px-3 rounded-button text-sm ${
-                    fontFamily === font
-                      ? 'bg-primary-light dark:bg-primary-dark text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
-                  }`}
-                  onClick={() => setFontFamily(font)}
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black bg-opacity-25" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-text-primary-light dark:text-text-primary-dark mb-4"
                 >
-                  {font === 'serif' && 'Serif'}
-                  {font === 'sans' && 'Sans'}
-                  {font === 'mono' && 'Mono'}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Theme */}
-          <div>
-            <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-3">
-              Тема
-            </h4>
-            <div className="grid grid-cols-3 gap-2">
-              {(['light', 'dark', 'sepia'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={`py-2 px-3 rounded-button text-sm ${
-                    theme === t
-                      ? t === 'light' 
-                        ? 'bg-gray-200 text-gray-900' 
-                        : t === 'dark' 
-                          ? 'bg-gray-700 text-white' 
-                          : 'bg-yellow-200 text-yellow-900'
-                      : 'bg-gray-100 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
-                  }`}
-                  onClick={() => setTheme(t)}
-                >
-                  {t === 'light' && 'Светлая'}
-                  {t === 'dark' && 'Темная'}
-                  {t === 'sepia' && 'Сепия'}
-                </button>
-              ))}
-            </div>
+                  Настройки чтения
+                </Dialog.Title>
+
+                <div className="mt-2 space-y-4">
+                  {/* Font Size */}
+                  <div>
+                    <h4 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Размер шрифта
+                    </h4>
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => setLocalScale(Math.max(0.8, localScale - 0.1))}
+                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-button text-text-primary-light dark:text-text-primary-dark"
+                      >
+                        A-
+                      </button>
+                      <span className="text-text-primary-light dark:text-text-primary-dark">
+                        {(localScale * 100).toFixed(0)}%
+                      </span>
+                      <button
+                        onClick={() => setLocalScale(Math.min(1.5, localScale + 0.1))}
+                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-button text-text-primary-light dark:text-text-primary-dark"
+                      >
+                        A+
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.8"
+                      max="1.5"
+                      step="0.1"
+                      value={localScale}
+                      onChange={(e) => setLocalScale(parseFloat(e.target.value))}
+                      className="w-full mt-2"
+                    />
+                  </div>
+
+                  {/* Font Family */}
+                  <div>
+                    <h4 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Шрифт
+                    </h4>
+                    <div className="flex space-x-2">
+                      {(['serif', 'sans', 'mono'] as const).map((family) => (
+                        <button
+                          key={family}
+                          className={`px-3 py-2 rounded-button text-sm ${
+                            localFontFamily === family
+                              ? 'bg-primary-light dark:bg-primary-dark text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
+                          }`}
+                          onClick={() => setLocalFontFamily(family)}
+                        >
+                          {family === 'serif' && 'Serif'}
+                          {family === 'sans' && 'Sans'}
+                          {family === 'mono' && 'Mono'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Theme */}
+                  <div>
+                    <h4 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Тема
+                    </h4>
+                    <div className="flex space-x-2">
+                      {(['light', 'dark', 'sepia'] as const).map((t) => (
+                        <button
+                          key={t}
+                          className={`px-3 py-2 rounded-button text-sm ${
+                            localTheme === t
+                              ? t === 'light' 
+                                ? 'bg-blue-500 text-white'
+                                : t === 'dark' 
+                                ? 'bg-gray-700 text-white'
+                                : 'bg-amber-600 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark'
+                          }`}
+                          onClick={() => setLocalTheme(t)}
+                        >
+                          {t === 'light' && 'Светлая'}
+                          {t === 'dark' && 'Темная'}
+                          {t === 'sepia' && 'Сепия'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-between">
+                  <button
+                    type="button"
+                    className="px-4 py-2 text-sm rounded-button bg-gray-300 dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark"
+                    onClick={handleReset}
+                  >
+                    Сбросить
+                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      className="px-4 py-2 text-sm rounded-button bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark"
+                      onClick={onClose}
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      className="px-4 py-2 text-sm rounded-button bg-primary-light dark:bg-primary-dark text-white"
+                      onClick={handleSave}
+                    >
+                      Сохранить
+                    </button>
+                  </div>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
         </div>
-        
-        <div className="mt-6">
-          <button
-            onClick={onClose}
-            className="w-full bg-primary-light dark:bg-primary-dark text-white py-2 px-4 rounded-lg hover:opacity-90 transition duration-200"
-          >
-            Применить
-          </button>
-        </div>
-      </div>
-    </div>
+      </Dialog>
+    </Transition>
   );
 };
 

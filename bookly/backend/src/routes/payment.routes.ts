@@ -3,6 +3,8 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import { YookassaService } from '../services/payment/yookassa-service';
+import { USDTService } from '../services/payment/usdt-service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -73,7 +75,153 @@ router.post('/create-invoice', async (req, res) => {
   }
 });
 
-// Verify payment (from Telegram webhook)
+// Create Yookassa payment
+router.post('/create-yookassa', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { bookId } = req.body;
+
+    if (!userId || !bookId) {
+      return res.status(400).json({ message: 'User ID and Book ID are required' });
+    }
+
+    // Get book details
+    const book = await prisma.book.findUnique({
+      where: { id: bookId },
+    });
+
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Create Yookassa payment
+    const payment = await YookassaService.createPayment({
+      bookId,
+      userId,
+      amount: book.price,
+      description: `Purchase of book: ${book.title}`,
+    });
+
+    res.json({
+      paymentId: payment.id,
+      confirmationUrl: payment.confirmation.confirmation_url,
+      status: payment.status,
+    });
+  } catch (error: any) {
+    console.error('Create Yookassa payment error:', error);
+    res.status(500).json({
+      message: 'Failed to create Yookassa payment',
+      error: error.message || 'Unknown error occurred'
+    });
+  }
+});
+
+// Create USDT TON payment (generate wallet address)
+router.post('/create-usdt-ton', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { bookId } = req.body;
+
+    if (!userId || !bookId) {
+      return res.status(400).json({ message: 'User ID and Book ID are required' });
+    }
+
+    // Get book details
+    const book = await prisma.book.findUnique({
+      where: { id: bookId },
+    });
+
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Generate TON wallet address
+    const wallet = await USDTService.generateTONAddress(userId, bookId);
+
+    res.json({
+      address: wallet.address,
+      expectedAmount: book.price, // In USDT equivalent
+      network: 'TON',
+    });
+  } catch (error: any) {
+    console.error('Create USDT TON payment error:', error);
+    res.status(500).json({
+      message: 'Failed to create USDT TON payment',
+      error: error.message || 'Unknown error occurred'
+    });
+  }
+});
+
+// Create USDT TRC20 payment (generate wallet address)
+router.post('/create-usdt-trc20', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { bookId } = req.body;
+
+    if (!userId || !bookId) {
+      return res.status(400).json({ message: 'User ID and Book ID are required' });
+    }
+
+    // Get book details
+    const book = await prisma.book.findUnique({
+      where: { id: bookId },
+    });
+
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Generate TRC20 wallet address
+    const wallet = await USDTService.generateTRC20Address(userId, bookId);
+
+    res.json({
+      address: wallet.address,
+      expectedAmount: book.price, // In USDT equivalent
+      network: 'TRC20',
+    });
+  } catch (error: any) {
+    console.error('Create USDT TRC20 payment error:', error);
+    res.status(500).json({
+      message: 'Failed to create USDT TRC20 payment',
+      error: error.message || 'Unknown error occurred'
+    });
+  }
+});
+
+// Verify USDT transaction
+router.post('/verify-usdt', async (req, res) => {
+  try {
+    const { address, network, bookId, userId } = req.body;
+
+    if (!address || !network || !bookId || !userId) {
+      return res.status(400).json({ message: 'Address, network, bookId, and userId are required' });
+    }
+
+    let verificationResult = false;
+
+    if (network === 'TON') {
+      verificationResult = await USDTService.checkTONTransaction(address, 0, bookId, userId); // Amount checking would happen in the service
+    } else if (network === 'TRC20') {
+      verificationResult = await USDTService.checkTRC20Transaction(address, 0, bookId, userId); // Amount checking would happen in the service
+    } else {
+      return res.status(400).json({ message: 'Unsupported network' });
+    }
+
+    if (verificationResult) {
+      res.json({ verified: true, message: 'Payment verified successfully' });
+    } else {
+      res.status(400).json({ message: 'Payment verification failed' });
+    }
+  } catch (error: any) {
+    console.error('Verify USDT payment error:', error);
+    res.status(500).json({
+      message: 'Failed to verify USDT payment',
+      error: error.message || 'Unknown error occurred'
+    });
+  }
+});
+
+// Verify payment (general verification endpoint)
 router.post('/verify', async (req, res) => {
   try {
     const { transactionId } = req.body;
@@ -82,7 +230,7 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ message: 'Transaction ID is required' });
     }
 
-    // In a real app, you would verify the transaction with Telegram
+    // In a real app, you would verify the transaction based on its type
     // For now, returning a success response
     res.json({ verified: true });
   } catch (error) {
@@ -91,10 +239,22 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// Webhook endpoint for Telegram payment updates
+// Webhook endpoint for payments (handles various payment providers)
 router.post('/webhook', async (req, res) => {
   try {
-    // Telegram sends updates in different formats, usually as update
+    // Check if this is a Yookassa webhook
+    if (req.headers['x-webhook-sign'] || req.headers['x-yookassa-signature']) {
+      // Handle Yookassa webhook
+      try {
+        await YookassaService.handleWebhook(req.body);
+        res.status(200).json({ message: 'Yookassa webhook processed' });
+        return;
+      } catch (error) {
+        console.error('Error processing Yookassa webhook:', error);
+      }
+    }
+
+    // Handle Telegram webhook as before
     const update = req.body;
 
     // Handle different types of updates

@@ -10,6 +10,8 @@ import FavoritesPage from '@/pages/FavoritesPage/FavoritesPage';
 import MyBooksPage from '@/pages/MyBooksPage/MyBooksPage';
 import ProfilePage from '@/pages/ProfilePage/ProfilePage';
 import Reader from '@/features/book-reader/ui/Reader';
+import AuthPage from '@/pages/AuthPage/AuthPage';
+import HelpPage from '@/pages/HelpPage/HelpPage';
 
 // Auth Components
 import PasswordResetForm from '@/features/auth/ui/PasswordResetForm';
@@ -43,7 +45,7 @@ const queryClient = new QueryClient({
 // Wrapper component for page transitions
 const AnimatedRoutes: React.FC = () => {
   const location = useLocation();
-  
+
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
@@ -70,6 +72,16 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/reader/:bookId" element={
           <AnimatedPage>
             <Reader />
+          </AnimatedPage>
+        } />
+        <Route path="/auth" element={
+          <AnimatedPage>
+            <AuthPage />
+          </AnimatedPage>
+        } />
+        <Route path="/help" element={
+          <AnimatedPage>
+            <HelpPage />
           </AnimatedPage>
         } />
         <Route path="/forgot-password" element={

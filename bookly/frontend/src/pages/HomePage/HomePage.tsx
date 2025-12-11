@@ -9,7 +9,7 @@ import BookCard from '@/entities/book/ui/BookCard';
 import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
-import { getBooks, getGenres } from '@/entities/book/api/book-api';
+import { getBooks, getGenres, addToFavorites, removeFromFavorites } from '@/entities/book/api/book-api';
 import { addBookToMyBooks } from '@/features/book-reader/api/reader-api';
 
 // Types
@@ -35,6 +35,24 @@ const HomePage: React.FC = () => {
     }),
   });
 
+  const favoriteMutation = useMutation({
+    mutationFn: async ({ bookId, isFavorite }: { bookId: string; isFavorite: boolean }) => {
+      if (isFavorite) {
+        return removeFromFavorites(bookId);
+      } else {
+        return addToFavorites(bookId);
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book', variables.bookId] });
+      toast.success(variables.isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    },
+    onError: () => {
+      toast.error('Ошибка при изменении избранного');
+    }
+  });
+
   const addBookToMyBooksMutation = useMutation({
     mutationFn: (bookId: string) => addBookToMyBooks(bookId),
     onSuccess: (_, bookId) => {
@@ -56,6 +74,14 @@ const HomePage: React.FC = () => {
     setSelectedBook(null);
   };
 
+  const handleAddToFavorite = (bookId: string) => {
+    favoriteMutation.mutate({ bookId, isFavorite: false });
+  };
+
+  const handleRemoveFromFavorite = (bookId: string) => {
+    favoriteMutation.mutate({ bookId, isFavorite: true });
+  };
+
   return (
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark pb-20">
       {/* Genres Filter */}
@@ -71,7 +97,7 @@ const HomePage: React.FC = () => {
           >
             Все
           </button>
-          
+
           {genres.map((genre) => (
             <button
               key={genre.id}
@@ -93,8 +119,8 @@ const HomePage: React.FC = () => {
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[...Array(6)].map((_, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="bg-white dark:bg-gray-800 rounded-card shadow p-4 animate-pulse"
               >
                 <div className="bg-gray-200 dark:bg-gray-700 h-48 rounded mb-3"></div>
@@ -113,7 +139,11 @@ const HomePage: React.FC = () => {
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={() => handleBookClick(book)}
               >
-                <BookCard book={book} />
+                <BookCard
+                  book={book}
+                  onAddToFavorite={handleAddToFavorite}
+                  onRemoveFromFavorite={handleRemoveFromFavorite}
+                />
               </motion.div>
             ))}
           </div>
@@ -122,9 +152,9 @@ const HomePage: React.FC = () => {
 
       {/* Book Modal */}
       {selectedBook && (
-        <BookModal 
-          book={selectedBook} 
-          onClose={handleCloseModal} 
+        <BookModal
+          book={selectedBook}
+          onClose={handleCloseModal}
           onBookAdded={(bookId) => addBookToMyBooksMutation.mutate(bookId)}
         />
       )}

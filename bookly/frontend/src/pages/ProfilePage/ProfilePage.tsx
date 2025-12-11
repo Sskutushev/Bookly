@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // API
-import { 
-  getUserProfile, 
-  updateUserProfile, 
-  getUserPurchases,
-  updateNotificationSettings 
+import {
+  getUserProfile,
+  updateUserProfile,
+  updateNotificationSettings
 } from '@/features/auth/api/auth-api';
+import {
+  getUserPurchases
+} from '@/features/user/api/user-api';
 
 // Components
 import TelegramBackButton from '@/widgets/TelegramBackButton/TelegramBackButton';
 import TwoFactorSetup from '@/features/auth/ui/TwoFactorSetup';
+import AvatarUpload from '@/features/user/components/AvatarUpload';
 
 // Types
 import { UserProfile } from '@/features/auth/model/types';
@@ -51,12 +54,44 @@ const ProfilePage: React.FC = () => {
     queryFn: getUserPurchases,
   });
 
-  // Update profile mutation
+  // Update profile mutation (for name and avatar)
   const updateProfileMutation = useMutation({
     mutationFn: updateUserProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
+  });
+
+  // Update email mutation
+  const updateEmailMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
+      updateUserEmail(email, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Email успешно обновлен!');
+      setIsEditingEmail(false);
+      setNewEmail('');
+      setCurrentPassword('');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Ошибка при обновлении email');
+    }
+  });
+
+  // Update password mutation
+  const updatePasswordMutation = useMutation({
+    mutationFn: ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) =>
+      updateUserPassword(currentPassword, newPassword),
+    onSuccess: () => {
+      toast.success('Пароль успешно обновлен!');
+      setIsEditingPassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Ошибка при обновлении пароля');
+    }
   });
 
   // Update notification settings mutation
@@ -70,22 +105,14 @@ const ProfilePage: React.FC = () => {
   // Handle email update
   const handleEmailUpdate = () => {
     if (newEmail && currentPassword) {
-      updateProfileMutation.mutate({ email: newEmail });
-      setIsEditingEmail(false);
-      setNewEmail('');
-      setCurrentPassword('');
+      updateEmailMutation.mutate({ email: newEmail, password: currentPassword });
     }
   };
 
   // Handle password update
   const handlePasswordUpdate = () => {
     if (newPassword === confirmNewPassword && currentPassword) {
-      // In a real app, you would send both current and new passwords
-      // updateProfileMutation.mutate({ password: newPassword });
-      setIsEditingPassword(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
+      updatePasswordMutation.mutate({ currentPassword, newPassword });
     }
   };
 
@@ -110,13 +137,15 @@ const ProfilePage: React.FC = () => {
       <div className="pt-16 container mx-auto px-4">
         {/* User info section - visible on all views */}
         <div className="bg-white dark:bg-gray-800 rounded-card shadow p-6 mb-6">
-          <div className="flex items-center">
-            <div className="w-16 h-16 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mr-4">
-              <span className="text-2xl">
-                {profile?.name?.charAt(0) || 'U'}
-              </span>
-            </div>
-            <div>
+          <div className="flex flex-col items-center">
+            <AvatarUpload
+              currentAvatar={profile?.avatar}
+              userName={profile?.name}
+              onAvatarUpdate={(avatarUrl) => {
+                // Update local state if needed
+              }}
+            />
+            <div className="mt-4 text-center">
               <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
                 {profile?.name}
               </h2>
@@ -539,62 +568,20 @@ const ProfilePage: React.FC = () => {
                 <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
                   ❓ Помощь
                 </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
-                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-                      🚀 Как начать
-                    </h4>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
-                      Краткое руководство по использованию приложения
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
-                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-                      💳 Способы оплаты
-                    </h4>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
-                      ЮKassa, USDT TON, USDT TRC20
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
-                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-                      📖 Как читать книги
-                    </h4>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
-                      Reader, закладки, настройки
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
-                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-                      ❤️ Избранное и коллекции
-                    </h4>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
-                      Организация личной библиотеки
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
-                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-                      🔐 Безопасность
-                    </h4>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
-                      2FA, смена пароля, приватность
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
-                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
-                      📧 Связь с поддержкой
-                    </h4>
-                    <p className="text-sm text-text-secondary-light dark:text-text-secondary-light">
-                      support@bookly.app<br />
-                      Telegram: @bookly_support
-                    </p>
-                  </div>
+
+                <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-card">
+                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                    📚 Помощь и поддержка
+                  </h4>
+                  <p className="text-sm text-text-secondary-light dark:text-text-secondary-light mb-4">
+                    Найдите ответы на часто задаваемые вопросы
+                  </p>
+                  <button
+                    onClick={() => window.open('https://t.me/bookly_support', '_blank')}
+                    className="w-full py-2 px-4 bg-primary-light dark:bg-primary-dark text-white rounded-button font-medium"
+                  >
+                    Связаться с поддержкой
+                  </button>
                 </div>
               </div>
             )}

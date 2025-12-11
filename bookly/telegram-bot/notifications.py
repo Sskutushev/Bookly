@@ -130,10 +130,10 @@ async def check_inactive_users(context: ContextTypes.DEFAULT_TYPE):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
+
         # Get users who haven't been active in the last 3 days
         three_days_ago = datetime.now() - timedelta(days=3)
-        
+
         cur.execute("""
             SELECT DISTINCT u.telegram_id, ns.frequency
             FROM "User" u
@@ -142,16 +142,40 @@ async def check_inactive_users(context: ContextTypes.DEFAULT_TYPE):
             AND ns."unfinishedReminder" = true
             AND u."lastActiveAt" < %s
         """, (three_days_ago,))
-        
+
         inactive_users = cur.fetchall()
-        
+
         for user_data in inactive_users:
             user_id = user_data[0]
-            
-            # For demo purposes, sending a generic reminder
-            # In a real app, you'd determine preferred genre based on user's favorites
-            await send_inactive_reminder(context.application, int(user_id), "Детектив", 5)
-        
+
+            # Determine preferred genre based on user's favorites
+            cur.execute("""
+                SELECT g.name, COUNT(f.id) as count
+                FROM "Favorite" f
+                JOIN "Book" b ON f."bookId" = b.id
+                JOIN "Genre" g ON b.id = g.id
+                WHERE f."userId" = (SELECT id FROM "User" WHERE telegram_id = %s)
+                GROUP BY g.name
+                ORDER BY count DESC
+                LIMIT 1
+            """, (user_id,))
+
+            result = cur.fetchone()
+            preferred_genre = result[0] if result else "Детектив"
+
+            # Count new books in the preferred genre
+            cur.execute("""
+                SELECT COUNT(*)
+                FROM "Book" b
+                JOIN "_BookToGenre" btg ON b.id = btg."A"
+                JOIN "Genre" g ON btg."B" = g.id
+                WHERE g.name = %s AND b."createdAt" > %s
+            """, (preferred_genre, three_days_ago))
+
+            new_books_count = cur.fetchone()[0] or 5  # Default to 5 if query fails
+
+            await send_inactive_reminder(context.application, int(user_id), preferred_genre, new_books_count)
+
         cur.close()
         conn.close()
     except Exception as e:
@@ -162,10 +186,10 @@ async def check_unfinished_books(context: ContextTypes.DEFAULT_TYPE):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
+
         # Get users with books they started reading but haven't finished
         seven_days_ago = datetime.now() - timedelta(days=7)
-        
+
         cur.execute("""
             SELECT u.telegram_id, b.title, b.id, rp.progress
             FROM "User" u
@@ -174,17 +198,17 @@ async def check_unfinished_books(context: ContextTypes.DEFAULT_TYPE):
             JOIN "NotificationSettings" ns ON u.id = ns."userId"
             WHERE ns."telegramEnabled" = true
             AND ns."unfinishedReminder" = true
-            AND rp.progress > 10 
+            AND rp.progress > 10
             AND rp.progress < 100
             AND rp."lastReadAt" < %s
         """, (seven_days_ago,))
-        
+
         unfinished_books = cur.fetchall()
-        
+
         for book_data in unfinished_books:
             user_id, title, book_id, progress = book_data
             await send_unfinished_reminder(context.application, int(user_id), title, book_id, progress)
-        
+
         cur.close()
         conn.close()
     except Exception as e:
@@ -195,49 +219,61 @@ async def check_new_books(context: ContextTypes.DEFAULT_TYPE):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        
+
         # Get books added in the last day
         yesterday = datetime.now() - timedelta(days=1)
-        
+
         cur.execute("""
             SELECT id, title, author, "coverUrl", price, "createdAt"
             FROM "Book"
             WHERE "createdAt" > %s
         """, (yesterday,))
-        
+
         new_books = cur.fetchall()
-        
+
         for book_data in new_books:
             book_id, title, author, cover_url, price, created_at = book_data
-            
-            # Get users who have marked the book's genre as favorite
-            # For this demo, we'll use a simplified approach
+
+            # Get genres for the new book
             cur.execute("""
-                SELECT DISTINCT u.telegram_id
-                FROM "User" u
-                JOIN "Favorite" f ON u.id = f."userId"
-                JOIN "Book" b ON f."bookId" = b.id
-                JOIN "NotificationSettings" ns ON u.id = ns."userId"
-                WHERE ns."telegramEnabled" = true
-                AND ns."newBooksInGenre" = true
-                AND b.id = %s
+                SELECT g.name
+                FROM "Genre" g
+                JOIN "_BookToGenre" btg ON g.id = btg."B"
+                WHERE btg."A" = %s
             """, (book_id,))
-            
-            users_to_notify = cur.fetchall()
-            
-            book_info = {
-                'id': book_id,
-                'title': title,
-                'author': author,
-                'coverUrl': cover_url,
-                'price': price
-            }
-            
-            for user_data in users_to_notify:
-                user_id = user_data[0]
-                # For this demo, we'll use a generic genre
-                await send_new_book_notification(context.application, int(user_id), book_info, "Детектив")
-        
+
+            genres = [row[0] for row in cur.fetchall()]
+
+            # For each genre of the new book, find users interested in that genre
+            for genre in genres:
+                # Get users who have books of this genre as favorite
+                cur.execute("""
+                    SELECT DISTINCT u.telegram_id
+                    FROM "User" u
+                    JOIN "Favorite" f ON u.id = f."userId"
+                    JOIN "Book" b ON f."bookId" = b.id
+                    JOIN "_BookToGenre" btg ON b.id = btg."A"
+                    JOIN "Genre" g ON btg."B" = g.id
+                    JOIN "NotificationSettings" ns ON u.id = ns."userId"
+                    WHERE ns."telegramEnabled" = true
+                    AND ns."newBooksInGenre" = true
+                    AND g.name = %s
+                """, (genre,))
+
+                users_to_notify = cur.fetchall()
+
+                book_info = {
+                    'id': book_id,
+                    'title': title,
+                    'author': author,
+                    'coverUrl': cover_url,
+                    'price': price
+                }
+
+                for user_data in users_to_notify:
+                    user_id = user_data[0]
+                    await send_new_book_notification(context.application, int(user_id), book_info, genre)
+
         cur.close()
         conn.close()
     except Exception as e:

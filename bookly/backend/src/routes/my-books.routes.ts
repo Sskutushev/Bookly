@@ -263,4 +263,46 @@ router.post('/:bookId/add', async (req, res) => {
   }
 });
 
+// Delete a book from user's library
+router.delete('/:bookId', async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { bookId } = req.params;
+
+    if (!userId || !bookId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Check if the book exists
+    const book = await prisma.book.findUnique({
+      where: { id: bookId },
+    });
+
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    // Delete reading progress for this book
+    await prisma.readingProgress.deleteMany({
+      where: {
+        userId,
+        bookId,
+      },
+    });
+
+    // Remove from favorites (optional - depending on business logic)
+    await prisma.favorite.deleteMany({
+      where: {
+        userId,
+        bookId,
+      },
+    });
+
+    res.status(200).json({ message: 'Book removed from library' });
+  } catch (error) {
+    console.error('Delete book from library error:', error);
+    res.status(500).json({ message: 'Failed to remove book from library' });
+  }
+});
+
 export default router;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import QRCode from 'qrcode.react';
-import { setupTwoFactor, verifyTwoFactor } from '@/features/auth/api/auth-api';
+import { setupTwoFactor, verifyTwoFactorSetup } from '@/features/auth/api/auth-api';
 import toast from 'react-hot-toast';
 
 interface TwoFactorSetupProps {
@@ -36,7 +36,7 @@ const TwoFactorSetup: React.FC<TwoFactorSetupProps> = ({ onComplete }) => {
 
     setIsLoading(true);
     try {
-      await verifyTwoFactor(token);
+      await verifyTwoFactorSetup(token);
       setStep('completed');
       toast.success('Двухфакторная аутентификация включена');
       onComplete?.();
