@@ -45,8 +45,6 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://bookly-bot.vercel.app',
   'https://bookly-bot-git-master.sskutushev.vercel.app', // Vercel preview deployment
-  '*.vercel.app', // Allow all Vercel deployments
-  'https://*.vercel.app', // Secure protocol as well
 ];
 
 const corsOptions: cors.CorsOptions = {
@@ -57,21 +55,20 @@ const corsOptions: cors.CorsOptions = {
       return;
     }
 
-    // Check allowed origins
-    const isAllowedOrigin = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin.startsWith('*.') || allowedOrigin.startsWith('https://*.')) {
-        // Handle wildcard subdomains
-        const domain = allowedOrigin.replace(/^\*\./, '').replace(/^https:\/\/\*\./, '');
-        return origin.endsWith('.' + domain) || origin === domain;
-      }
-      return origin === allowedOrigin;
-    });
-
-    if (isAllowedOrigin) {
+    // Check exact matches
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+      return;
     }
+
+    // Check for Vercel subdomain pattern
+    if (origin.endsWith('.vercel.app')) {
+      callback(null, true);
+      return;
+    }
+
+    // Not allowed
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   optionsSuccessStatus: 200
