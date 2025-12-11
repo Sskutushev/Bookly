@@ -71,7 +71,9 @@ const corsOptions: cors.CorsOptions = {
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  exposedHeaders: ['X-Total-Count', 'X-Requested-With'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Telegram-Init-Data', 'X-Guest-ID', 'X-Forwarded-For', 'X-Real-IP']
 };
 
 // Parse JSON bodies
@@ -94,7 +96,7 @@ app.options('*', (req: Request, res: Response) => {
   }
 
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.sendStatus(200);
 });
