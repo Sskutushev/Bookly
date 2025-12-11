@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 // API
 import {
   getUserProfile,
-  updateUserProfile,
   updateNotificationSettings,
   updateUserEmail,
   updateUserPassword
