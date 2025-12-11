@@ -48,8 +48,8 @@ interface AccordionItemProps {
   children: React.ReactNode;
 }
 
-export const AccordionItem: React.FC<AccordionItemProps> = ({ value, children }) => {
-  return <div className="w-full">{children}</div>;
+export const AccordionItem: React.FC<AccordionItemProps> = ({ value: itemValue, children }) => {
+  return <div className="w-full" data-value={itemValue}>{children}</div>;
 };
 
 interface AccordionHeaderProps {
