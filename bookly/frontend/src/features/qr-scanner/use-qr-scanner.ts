@@ -15,7 +15,7 @@ export const useQRScanner = () => {
         {
           text: 'Отсканируйте QR-код промокода',
         },
-        (text) => {
+        (text: string) => {
           // Return true to close the scanner, false to continue scanning
           if (text) {
             tg.closeScanQrPopup();

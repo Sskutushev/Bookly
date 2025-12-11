@@ -104,10 +104,12 @@ interface IWebApp {
 
   onEvent(eventType: 'themeChanged' | 'viewportChanged', callback: () => void): void;
   offEvent(eventType: 'themeChanged' | 'viewportChanged', callback: () => void): void;
-  
+
   showPopup(params: object, callback?: (id?: string) => void): void;
   showAlert(message: string, callback?: () => void): void;
   showConfirm(message: string, callback?: (ok: boolean) => void): void;
+  showScanQrPopup(params: { text?: string }, callback?: (data: string) => boolean): void;
+  closeScanQrPopup(): void;
 }
 
 export const tg = window.Telegram?.WebApp;

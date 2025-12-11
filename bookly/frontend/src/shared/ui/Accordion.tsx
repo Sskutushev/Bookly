@@ -72,10 +72,10 @@ export const AccordionPanel: React.FC<AccordionPanelProps> = ({ children, classN
   }
 
   const { value } = context;
-  
+
   return (
     <div className={className}>
-      {value && <div className={`${value ? 'block' : 'hidden'}`}>{children}</div>}
+      {value !== null && <div className={`${value ? 'block' : 'hidden'}`}>{children}</div>}
     </div>
   );
 };

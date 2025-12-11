@@ -49,10 +49,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ isOpen, onClose, options, x, 
           <div className="fixed inset-0 bg-black bg-opacity-0" />
         </Transition.Child>
 
-        <div 
+        <div
           className="fixed z-50 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-          style={{ 
-            left: x, 
+          style={{
+            left: x,
             top: y,
             transform: 'translateY(-100%)',
             minWidth: '180px'

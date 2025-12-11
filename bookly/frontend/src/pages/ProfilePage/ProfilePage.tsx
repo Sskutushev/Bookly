@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 // API
 import {
   getUserProfile,
   updateUserProfile,
-  updateNotificationSettings
+  updateNotificationSettings,
+  updateUserEmail,
+  updateUserPassword
 } from '@/features/auth/api/auth-api';
 import {
   getUserPurchases
@@ -60,7 +63,7 @@ const ProfilePage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
-  });
+  }); // Note: Only used for name/avatar, not email/password
 
   // Update email mutation
   const updateEmailMutation = useMutation({
