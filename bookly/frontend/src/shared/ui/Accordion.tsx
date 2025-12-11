@@ -71,11 +71,10 @@ export const AccordionPanel: React.FC<AccordionPanelProps> = ({ children, classN
     throw new Error('AccordionPanel must be used within an Accordion');
   }
 
-  const contextValue = context?.value; // Use a different name to avoid conflict
-
+  // Using context directly instead of destructuring value to avoid unused variable error
   return (
     <div className={className}>
-      {contextValue !== null && <div className={`${contextValue ? 'block' : 'hidden'}`}>{children}</div>}
+      {context.value !== null && <div className={`${context.value ? 'block' : 'hidden'}`}>{children}</div>}
     </div>
   );
 };

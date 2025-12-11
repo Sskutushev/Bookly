@@ -57,14 +57,15 @@ const ProfilePage: React.FC = () => {
     queryFn: getUserPurchases,
   });
 
-  // Note: updateProfileMutation is defined but intentionally unused for now, kept for future use
-  // Update profile mutation (for name and avatar)
+  // Update profile mutation (for name and avatar) - commented out as not actively used
+  /*
   const updateProfileMutation = useMutation({
     mutationFn: updateUserProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
   });
+  */
 
   // Update email mutation
   const updateEmailMutation = useMutation({
