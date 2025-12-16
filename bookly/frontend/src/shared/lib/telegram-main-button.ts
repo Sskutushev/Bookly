@@ -49,18 +49,6 @@ export class TelegramMainButton {
     this.button.hideProgress();
   }
 
-  setColor(color: string) {
-    if (!this.button) {
-      console.warn('Telegram MainButton is not available');
-      return;
-    }
-
-    // Note: Telegram WebApp SDK doesn't allow changing button color directly via method
-    // Color is typically handled via CSS or other means
-    // This method is kept for compatibility but doesn't perform actual color change
-    console.log('Setting button color to:', color);
-  }
-
   disable() {
     if (!this.button) {
       console.warn('Telegram MainButton is not available');
