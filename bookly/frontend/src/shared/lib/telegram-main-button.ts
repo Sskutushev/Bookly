@@ -66,6 +66,13 @@ export class TelegramMainButton {
 
     this.button.enable();
   }
+
+  setColor(color: string) {
+    // setColor is not a standard Telegram WebApp MainButton method
+    // The color is typically handled via CSS or predefined themes
+    // Keeping this method for compatibility but with no-op implementation
+    console.log('Setting button color to:', color);
+  }
 }
 
 export const mainButton = new TelegramMainButton();

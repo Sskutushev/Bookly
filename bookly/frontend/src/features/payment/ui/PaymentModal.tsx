@@ -34,7 +34,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
     if (book) {
       // Show MainButton with payment text
       mainButton.show(`Оплатить ${book.price}₽`, handlePayment);
-      mainButton.setColor('#8B7FF5');
+      // mainButton.setColor('#8B7FF5'); // setColor is not a standard method, removing for now
     }
 
     // Clean up on unmount
