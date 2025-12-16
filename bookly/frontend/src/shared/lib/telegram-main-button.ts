@@ -10,7 +10,7 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
+
     this.button.setText(text);
     this.button.show();
     this.button.onClick(onClick);
@@ -26,7 +26,7 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
+
     this.button.hide();
     this.button.offClick();
   }
@@ -36,7 +36,7 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
+
     this.button.showProgress();
   }
 
@@ -45,7 +45,7 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
+
     this.button.hideProgress();
   }
 
@@ -55,8 +55,8 @@ export class TelegramMainButton {
       return;
     }
 
-    // Note: Telegram WebApp SDK doesn't allow changing button color directly
-    // The color is typically set via CSS classes or predefined styles
+    // Note: Telegram WebApp SDK doesn't allow changing button color directly via method
+    // Color is typically handled via CSS or other means
     // This method is kept for compatibility but doesn't perform actual color change
     console.log('Setting button color to:', color);
   }
