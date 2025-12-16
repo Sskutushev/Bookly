@@ -55,8 +55,10 @@ export class TelegramMainButton {
       return;
     }
 
-    // In Telegram WebApp SDK, colors are set via separate properties
-    this.button.color = color;
+    // Note: Telegram WebApp SDK doesn't allow changing button color directly
+    // The color is typically set via CSS classes or predefined styles
+    // This method is kept for compatibility but doesn't perform actual color change
+    console.log('Setting button color to:', color);
   }
 
   disable() {

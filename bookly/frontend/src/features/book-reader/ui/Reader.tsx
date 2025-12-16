@@ -54,10 +54,6 @@ const Reader: React.FC = () => {
     enabled: !!bookId && !isExcerpt,
   });
 
-  // Add book to user's library when the book is loaded (for first-time readers)
-  const { mutate: addBookToLibrary } = useMutation({
-    mutationFn: (bookId: string) => addBookToMyBooks(bookId),
-  });
 
   // Query to fetch the actual .fb2 content from the book ID
   const { data: fb2Content, isLoading: isFb2ContentLoading } = useQuery({
