@@ -6,12 +6,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { parseFB2Content } from '../utils/fb2-parser';
 
 // API
-import { 
-  getBookForReading, 
-  getReadingProgress, 
+import {
+  getBookForReading,
+  getReadingProgress,
   updateReadingProgress,
   getBookFragment,
   fetchBookContent,
+  addBookToMyBooks,
 } from '@/features/book-reader/api/reader-api';
 
 // Components
@@ -90,15 +91,19 @@ const Reader: React.FC = () => {
   }, [progress]);
 
   // Add book to library when book data is loaded for the first time
+  const addBookToMyBooksMutation = useMutation({
+    mutationFn: (bookId: string) => addBookToMyBooks(bookId),
+  });
+
   useEffect(() => {
     if (book && bookId && !isExcerpt) {
       // Check if book is already in progress to avoid duplicate additions
       // Only add if there's no existing progress record
       if (!progress || progress.currentPage === 1 && progress.progress === 0) {
-        addBookToLibrary(bookId);
+        addBookToMyBooksMutation.mutate(bookId);
       }
     }
-  }, [book, bookId, progress, isExcerpt, addBookToLibrary]);
+  }, [book, bookId, progress, isExcerpt, addBookToMyBooksMutation]);
 
   // Mutation for updating reading progress
   const updateProgressMutation = useMutation({

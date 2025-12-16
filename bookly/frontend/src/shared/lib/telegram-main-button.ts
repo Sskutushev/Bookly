@@ -54,8 +54,9 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
-    this.button.setParams({ color });
+
+    // In Telegram WebApp SDK, colors are set via separate properties
+    this.button.color = color;
   }
 
   disable() {
@@ -63,8 +64,8 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
-    this.button.setParams({ is_active: false });
+
+    this.button.disable();
   }
 
   enable() {
@@ -72,8 +73,8 @@ export class TelegramMainButton {
       console.warn('Telegram MainButton is not available');
       return;
     }
-    
-    this.button.setParams({ is_active: true });
+
+    this.button.enable();
   }
 }
 
