@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 // API
 import {
   getUserProfile,
+  updateUserProfile,
   updateNotificationSettings,
   updateUserEmail,
   updateUserPassword
@@ -34,8 +35,10 @@ interface Purchase {
 
 const ProfilePage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'purchases' | 'security' | 'notifications' | 'help'>('purchases');
+  const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -56,15 +59,17 @@ const ProfilePage: React.FC = () => {
     queryFn: getUserPurchases,
   });
 
-  // Update profile mutation (for name and avatar) - commented out as not actively used
-  /*
+  // Update profile mutation (for name and avatar)
   const updateProfileMutation = useMutation({
     mutationFn: updateUserProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Профиль успешно обновлен!');
     },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Ошибка при обновлении профиля');
+    }
   });
-  */
 
   // Update email mutation
   const updateEmailMutation = useMutation({
@@ -110,6 +115,14 @@ const ProfilePage: React.FC = () => {
   const handleEmailUpdate = () => {
     if (newEmail && currentPassword) {
       updateEmailMutation.mutate({ email: newEmail, password: currentPassword });
+    }
+  };
+
+  // Handle name update
+  const handleNameUpdate = () => {
+    if (newName.trim()) {
+      updateProfileMutation.mutate({ name: newName });
+      setIsEditingName(false);
     }
   };
 
@@ -270,6 +283,58 @@ const ProfilePage: React.FC = () => {
                 </h3>
                 
                 <div className="space-y-6">
+                  <div>
+                    <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                      Имя
+                    </h4>
+                    <div className="flex justify-between items-center">
+                      <p className="text-text-primary-light dark:text-text-primary-dark">
+                        {profile?.name}
+                      </p>
+                      <button
+                        className="text-primary-light dark:text-primary-dark hover:underline"
+                        onClick={() => {
+                          setNewName(profile?.name || '');
+                          setIsEditingName(true);
+                        }}
+                      >
+                        Изменить
+                      </button>
+                    </div>
+
+                    {isEditingName && (
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-button">
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                            Новое имя
+                          </label>
+                          <input
+                            type="text"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                            placeholder="Введите новое имя"
+                          />
+                        </div>
+
+                        <div className="flex space-x-2">
+                          <button
+                            className="px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
+                            onClick={handleNameUpdate}
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                            onClick={() => setIsEditingName(false)}
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
                       Email
@@ -664,6 +729,58 @@ const ProfilePage: React.FC = () => {
               </h3>
               
               <div className="space-y-6">
+                <div>
+                  <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
+                    Имя
+                  </h4>
+                  <div className="flex justify-between items-center">
+                    <p className="text-text-primary-light dark:text-text-primary-dark">
+                      {profile?.name}
+                    </p>
+                    <button
+                      className="text-primary-light dark:text-primary-dark hover:underline text-sm"
+                      onClick={() => {
+                        setNewName(profile?.name || '');
+                        setIsEditingName(true);
+                      }}
+                    >
+                      Изменить
+                    </button>
+                  </div>
+
+                  {isEditingName && (
+                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-button">
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-text-primary-light dark:text-text-primary-dark mb-1">
+                          Новое имя
+                        </label>
+                        <input
+                          type="text"
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-button bg-white dark:bg-gray-600 text-text-primary-light dark:text-text-primary-dark border border-gray-300 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+                          placeholder="Введите новое имя"
+                        />
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <button
+                          className="flex-1 px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
+                          onClick={handleNameUpdate}
+                        >
+                          Сохранить
+                        </button>
+                        <button
+                          className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark rounded-button"
+                          onClick={() => setIsEditingName(false)}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <h4 className="font-medium text-text-primary-light dark:text-text-primary-dark mb-2">
                     Email

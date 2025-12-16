@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { uploadAvatar } from '@/features/user/api/user-api';
+import { updateUserProfile } from '@/features/auth/api/auth-api';
 
 interface AvatarUploadProps {
   currentAvatar?: string | null;
@@ -23,13 +24,23 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => uploadAvatar(file),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success('Аватар успешно обновлен!');
       setPreviewUrl(data.avatarUrl);
-      if (onAvatarUpdate) {
-        onAvatarUpdate(data.avatarUrl);
+
+      // Also update the user profile with the new avatar
+      try {
+        await updateUserProfile({ avatar: data.avatarUrl });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+
+        if (onAvatarUpdate) {
+          onAvatarUpdate(data.avatarUrl);
+        }
+      } catch (error: any) {
+        console.error('Error updating profile with avatar:', error);
+        toast.error(error.response?.data?.message || 'Ошибка при обновлении профиля');
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
       }
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
     onError: (error: any) => {
       console.error('Error uploading avatar:', error);

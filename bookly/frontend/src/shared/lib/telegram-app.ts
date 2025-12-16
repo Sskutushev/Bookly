@@ -146,7 +146,8 @@ export const initTelegramApp = () => {
   // Listen to theme changes
   tg.onEvent('themeChanged', () => {
     const isDark = tg.colorScheme === 'dark';
-    document.documentElement.classList.toggle('dark', isDark);
+    // Don't change the theme class directly since we manage it in App.tsx
+    // Just update the background color to match Telegram's theme
     if (isVersionAtLeast('6.1')) {
        tg.setBackgroundColor(isDark ? '#0F0F1E' : '#F8F9FE');
     }

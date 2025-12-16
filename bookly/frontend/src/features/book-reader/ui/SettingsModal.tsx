@@ -5,7 +5,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 
 // Telegram storage for saving settings
-import { set, get } from '@/shared/lib/telegram-storage';
+import { telegramStorage } from '@/shared/lib/telegram-storage';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -36,9 +36,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const savedScale = await get('reader_scale');
-        const savedTheme = await get('reader_theme');
-        const savedFontFamily = await get('reader_font_family');
+        const savedScale = await telegramStorage.get('reader_scale');
+        const savedTheme = await telegramStorage.get('reader_theme');
+        const savedFontFamily = await telegramStorage.get('reader_font_family');
 
         if (savedScale) setLocalScale(parseFloat(savedScale));
         if (savedTheme) setLocalTheme(savedTheme as 'light' | 'dark' | 'sepia');
@@ -60,9 +60,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
     // Save to Telegram CloudStorage
     try {
-      await set('reader_scale', localScale.toString());
-      await set('reader_theme', localTheme);
-      await set('reader_font_family', localFontFamily);
+      await telegramStorage.set('reader_scale', localScale.toString());
+      await telegramStorage.set('reader_theme', localTheme);
+      await telegramStorage.set('reader_font_family', localFontFamily);
     } catch (error) {
       console.error('Error saving reader settings:', error);
     }

@@ -113,7 +113,9 @@ const App = () => {
 
     initAuth();
     const tgData = initTelegramApp();
-    if (tgData?.colorScheme) {
+    // Only set the theme from Telegram if user hasn't manually changed it
+    // Check if theme was already set by user preference in storage
+    if (tgData?.colorScheme && !localStorage.getItem('theme-preference-set')) {
       setTheme(tgData.colorScheme);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

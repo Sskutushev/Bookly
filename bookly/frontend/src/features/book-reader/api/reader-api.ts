@@ -35,9 +35,9 @@ export const getReadingProgress = async (bookId: string): Promise<any> => {
   return response.data;
 };
 
-export const fetchBookContent = async (contentUrl: string): Promise<string> => {
-  const response = await fetch(contentUrl);
-  return response.text();
+export const fetchBookContent = async (bookId: string): Promise<string> => {
+  const response = await axiosInstance.get(`/api/books/${bookId}/content`);
+  return response.data;
 };
 
 export const addBookToMyBooks = async (bookId: string): Promise<any> => {

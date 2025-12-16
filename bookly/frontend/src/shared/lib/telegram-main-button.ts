@@ -1,53 +1,80 @@
-// src/shared/lib/telegram-main-button.ts
+// frontend/src/shared/lib/telegram-main-button.ts
 
 import { tg } from './telegram-app';
 
-class TelegramMainButton {
-  show(text: string, onClick: () => void): void {
-    if (!tg) return;
+export class TelegramMainButton {
+  private button = tg?.MainButton;
+
+  show(text: string, onClick: () => void) {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.setText(text);
-    tg.MainButton.show();
-    tg.MainButton.onClick(onClick);
+    this.button.setText(text);
+    this.button.show();
+    this.button.onClick(onClick);
+
+    // Haptic feedback when button is shown
+    if (tg?.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred('medium');
+    }
   }
 
-  hide(): void {
-    if (!tg) return;
+  hide() {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.hide();
-    // A generic offClick is needed to remove the listener
-    tg.MainButton.offClick(() => {}); 
+    this.button.hide();
+    this.button.offClick();
   }
 
-  showProgress(leaveActive: boolean = false): void {
-    if (!tg) return;
+  showProgress() {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.showProgress(leaveActive);
+    this.button.showProgress();
   }
 
-  hideProgress(): void {
-    if (!tg) return;
+  hideProgress() {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.hideProgress();
+    this.button.hideProgress();
   }
 
-  enable(): void {
-    if (!tg) return;
+  setColor(color: string) {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.enable();
+    this.button.setParams({ color });
   }
 
-  disable(): void {
-    if (!tg) return;
+  disable() {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.disable();
+    this.button.setParams({ is_active: false });
   }
 
-  updateText(text: string): void {
-    if (!tg) return;
+  enable() {
+    if (!this.button) {
+      console.warn('Telegram MainButton is not available');
+      return;
+    }
     
-    tg.MainButton.setText(text);
+    this.button.setParams({ is_active: true });
   }
 }
 
-export default new TelegramMainButton();
+export const mainButton = new TelegramMainButton();

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
@@ -7,7 +7,7 @@ import BookCard from '@/entities/book/ui/BookCard';
 import BookModal from '@/widgets/BookModal/BookModal';
 
 // API
-import { getBooks } from '@/entities/book/api/book-api';
+import { getFavorites } from '@/features/favorites/api/favorites-api';
 
 // Types
 import { Book } from '@/entities/book/model/types';
@@ -18,14 +18,40 @@ const FavoritesPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<string>('date');
 
   // Fetch favorite books
-  const { data: books = [], isLoading } = useQuery({
-    queryKey: ['favorites', selectedGenre, sortOrder],
-    queryFn: () => getBooks({ 
-      genre: selectedGenre !== 'all' ? selectedGenre : undefined,
-      // In a real app, we would have a specific endpoint for favorites
-      // For now, we're just filtering all books
-    }),
+  const { data: allFavorites = [], isLoading } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => getFavorites(),
   });
+
+  // Filter and sort books
+  const books = React.useMemo(() => {
+    let filteredBooks = [...allFavorites];
+
+    // Filter by genre
+    if (selectedGenre !== 'all') {
+      filteredBooks = filteredBooks.filter(book =>
+        book.genres?.some(genre => genre.name.toLowerCase() === selectedGenre.toLowerCase())
+      );
+    }
+
+    // Sort books
+    switch (sortOrder) {
+      case 'title':
+        filteredBooks.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'author':
+        filteredBooks.sort((a, b) => a.author.localeCompare(b.author));
+        break;
+      case 'date':
+      default:
+        // For favorites, we don't have explicit date added to favorites
+        // So we'll sort by the book's creation date or just by ID as fallback
+        filteredBooks.sort((a, b) => a.id.localeCompare(b.id));
+        break;
+    }
+
+    return filteredBooks;
+  }, [allFavorites, selectedGenre, sortOrder]);
 
   const handleBookClick = (book: Book) => {
     setSelectedBook(book);

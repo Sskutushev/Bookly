@@ -1,9 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/model/auth-store';
 import ThemeToggleButton from '@/features/theme/ui/ThemeToggleButton';
 
 const Header: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleLoginClick = () => {
+    navigate('/auth');
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-20 backdrop-blur-lg bg-bg-light/80 dark:bg-bg-dark/80 border-b border-gray-200 dark:border-gray-700">
@@ -35,13 +41,19 @@ const Header: React.FC = () => {
         <div className="flex items-center gap-3">
           <ThemeToggleButton />
           {isAuthenticated && user ? (
-            <div className="w-10 h-10 rounded-full bg-primary-light/20 dark:bg-primary-dark/20 flex items-center justify-center">
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-10 h-10 rounded-full bg-primary-light/20 dark:bg-primary-dark/20 flex items-center justify-center hover:opacity-80 transition-opacity"
+            >
               <span className="text-lg font-bold text-primary-light dark:text-primary-dark">
                 {user.name.charAt(0).toUpperCase()}
               </span>
-            </div>
+            </button>
           ) : (
-            <button className="px-4 py-2 rounded-button font-semibold text-text-primary-light dark:text-text-primary-dark bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
+            <button
+              onClick={handleLoginClick}
+              className="px-4 py-2 rounded-button font-semibold text-text-primary-light dark:text-text-primary-dark bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+            >
               Войти
             </button>
           )}

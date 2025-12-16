@@ -20,10 +20,17 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       theme: getSystemTheme(), // Initialize with system theme
       toggleTheme: () =>
-        set((state) => ({
-          theme: state.theme === 'light' ? 'dark' : 'light',
-        })),
-      setTheme: (theme) => set({ theme }),
+        set((state) => {
+          const newTheme = state.theme === 'light' ? 'dark' : 'light';
+          // Set a flag to indicate that user has manually changed theme
+          localStorage.setItem('theme-preference-set', 'true');
+          return { theme: newTheme };
+        }),
+      setTheme: (theme) => {
+        // Set a flag to indicate that user has manually set theme
+        localStorage.setItem('theme-preference-set', 'true');
+        return set({ theme });
+      },
     }),
     {
       name: 'theme-storage', // name of the item in the storage (must be unique)

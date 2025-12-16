@@ -53,11 +53,16 @@ const Reader: React.FC = () => {
     enabled: !!bookId && !isExcerpt,
   });
 
-  // Query to fetch the actual .fb2 content from the URL provided by the metadata
+  // Add book to user's library when the book is loaded (for first-time readers)
+  const { mutate: addBookToLibrary } = useMutation({
+    mutationFn: (bookId: string) => addBookToMyBooks(bookId),
+  });
+
+  // Query to fetch the actual .fb2 content from the book ID
   const { data: fb2Content, isLoading: isFb2ContentLoading } = useQuery({
-    queryKey: ['bookContent', book?.contentUrl],
-    queryFn: () => fetchBookContent(book.contentUrl),
-    enabled: !!book?.contentUrl && !isExcerpt,
+    queryKey: ['bookContent', bookId],
+    queryFn: () => fetchBookContent(bookId!),
+    enabled: !!bookId && !isExcerpt,
   });
 
   const parsedBook = useMemo(() => {
@@ -83,6 +88,17 @@ const Reader: React.FC = () => {
       setPageNumber(progress.currentPage);
     }
   }, [progress]);
+
+  // Add book to library when book data is loaded for the first time
+  useEffect(() => {
+    if (book && bookId && !isExcerpt) {
+      // Check if book is already in progress to avoid duplicate additions
+      // Only add if there's no existing progress record
+      if (!progress || progress.currentPage === 1 && progress.progress === 0) {
+        addBookToLibrary(bookId);
+      }
+    }
+  }, [book, bookId, progress, isExcerpt, addBookToLibrary]);
 
   // Mutation for updating reading progress
   const updateProgressMutation = useMutation({
@@ -285,7 +301,7 @@ const Reader: React.FC = () => {
             </button>
             
             <span className="text-text-primary-light dark:text-text-primary-dark">
-              Страница {pageNumber} из {numPages}
+              Раздел {pageNumber} из {numPages}
             </span>
             
             <button 

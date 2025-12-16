@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import toast from 'react-hot-toast';
@@ -14,6 +14,11 @@ import {
 // Types
 import { Book } from '@/entities/book/model/types';
 
+// Telegram helpers
+import { mainButton } from '@/shared/lib/telegram-main-button';
+import { haptic } from '@/shared/lib/haptic';
+import { telegramDialogs } from '@/shared/lib/telegram-dialogs';
+
 interface PaymentModalProps {
   book: Book;
   onClose: () => void;
@@ -24,39 +29,66 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'telegram' | 'yookassa' | 'usdt-ton' | 'usdt-trc20'>('telegram');
 
+  // Use Telegram MainButton when modal is open
+  useEffect(() => {
+    if (book) {
+      // Show MainButton with payment text
+      mainButton.show(`Оплатить ${book.price}₽`, handlePayment);
+      mainButton.setColor('#8B7FF5');
+    }
+
+    // Clean up on unmount
+    return () => {
+      mainButton.hide();
+    };
+  }, [book, selectedMethod]);
+
   const handleTelegramPayment = async () => {
     setIsProcessing(true);
+    mainButton.showProgress();
+    mainButton.disable();
 
     try {
       // Create invoice
       const invoiceLink = await createInvoice(book.id);
 
-      // Open Telegram invoice
-      (window as any).Telegram?.WebApp?.openInvoice(
-        invoiceLink,
-        (status: string) => {
-          setIsProcessing(false);
+      if (invoiceLink) {
+        // Open Telegram invoice
+        (window as any).Telegram?.WebApp?.openInvoice(
+          invoiceLink,
+          async (status: string) => {
+            setIsProcessing(false);
+            mainButton.hideProgress();
+            mainButton.enable();
 
-          if (status === 'paid') {
-            toast.success('Книга куплена!');
-            onSuccess();
-          } else if (status === 'cancelled') {
-            toast.error('Платеж отменен');
-            onClose();
-          } else if (status === 'failed') {
-            toast.error('Ошибка платежа');
+            if (status === 'paid') {
+              haptic.success();
+              await telegramDialogs.alert('Книга успешно куплена!');
+              onSuccess();
+            } else if (status === 'cancelled') {
+              haptic.warning();
+              onClose();
+            } else if (status === 'failed') {
+              haptic.error();
+              await telegramDialogs.alert('Ошибка оплаты. Попробуйте снова.');
+            }
           }
-        }
-      );
+        );
+      }
     } catch (error) {
       setIsProcessing(false);
-      toast.error('Ошибка при создании инвойса');
+      mainButton.hideProgress();
+      mainButton.enable();
+      haptic.error();
+      await telegramDialogs.alert('Ошибка при создании инвойса');
       console.error(error);
     }
   };
 
   const handleYookassaPayment = async () => {
     setIsProcessing(true);
+    mainButton.showProgress();
+    mainButton.disable();
 
     try {
       const response = await createYookassaPayment(book.id);
@@ -69,7 +101,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
       }
     } catch (error) {
       setIsProcessing(false);
-      toast.error('Ошибка при создании платежа ЮKassa');
+      mainButton.hideProgress();
+      mainButton.enable();
+      haptic.error();
+      await telegramDialogs.alert('Ошибка при создании платежа ЮKassa');
       console.error(error);
     }
   };
@@ -79,17 +114,25 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
       const response = await createUsdtTonPayment(book.id);
 
       if (response.address) {
-        // Show QR code modal or copy to clipboard functionality
-        const confirmed = confirm(`Адрес для оплаты в USDT (TON): ${response.address}\n\nСкопировать адрес и продолжить оплату?`);
+        // Show Telegram popup instead of browser confirm
+        const action = await telegramDialogs.popup({
+          title: 'Оплата USDT (TON)',
+          message: `Адрес для оплаты: ${response.address}\nСкопируйте и продолжите оплату.`,
+          buttons: [
+            { id: 'copy', type: 'default', text: 'Скопировать' },
+            { id: 'cancel', type: 'cancel', text: 'Отмена' }
+          ]
+        });
 
-        if (confirmed) {
+        if (action === 'copy') {
           navigator.clipboard.writeText(response.address);
           toast.success('Адрес скопирован в буфер обмена');
           onSuccess(); // Close the modal after successful initiation
         }
       }
     } catch (error) {
-      toast.error('Ошибка при создании USDT TON платежа');
+      haptic.error();
+      await telegramDialogs.alert('Ошибка при создании USDT TON платежа');
       console.error(error);
     }
   };
@@ -99,22 +142,33 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
       const response = await createUsdtTrc20Payment(book.id);
 
       if (response.address) {
-        // Show QR code modal or copy to clipboard functionality
-        const confirmed = confirm(`Адрес для оплаты в USDT (TRC20): ${response.address}\n\nСкопировать адрес и продолжить оплату?`);
+        // Show Telegram popup instead of browser confirm
+        const action = await telegramDialogs.popup({
+          title: 'Оплата USDT (TRC20)',
+          message: `Адрес для оплаты: ${response.address}\nСкопируйте и продолжите оплату.`,
+          buttons: [
+            { id: 'copy', type: 'default', text: 'Скопировать' },
+            { id: 'cancel', type: 'cancel', text: 'Отмена' }
+          ]
+        });
 
-        if (confirmed) {
+        if (action === 'copy') {
           navigator.clipboard.writeText(response.address);
           toast.success('Адрес скопирован в буфер обмена');
           onSuccess(); // Close the modal after successful initiation
         }
       }
     } catch (error) {
-      toast.error('Ошибка при создании USDT TRC20 платежа');
+      haptic.error();
+      await telegramDialogs.alert('Ошибка при создании USDT TRC20 платежа');
       console.error(error);
     }
   };
 
   const handlePayment = async () => {
+    // Haptic feedback for button press
+    haptic.medium();
+
     switch (selectedMethod) {
       case 'telegram':
         await handleTelegramPayment();
@@ -129,7 +183,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
         await handleUsdtTrc20Payment();
         break;
       default:
-        toast.error('Выберите способ оплаты');
+        haptic.error();
+        await telegramDialogs.alert('Выберите способ оплаты');
     }
   };
 
@@ -273,17 +328,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ book, onClose, onSuccess })
                   </div>
                 </div>
 
+                {/* Hidden button to maintain accessibility, but Telegram MainButton is used instead */}
                 <div className="mt-6">
                   <button
                     type="button"
-                    className={`w-full px-4 py-3 rounded-button bg-primary-light dark:bg-primary-dark text-white font-medium ${
-                      isProcessing ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
+                    className="opacity-0 absolute w-0 h-0 overflow-hidden"
                     onClick={handlePayment}
                     disabled={isProcessing}
                   >
                     {isProcessing ? 'Обработка...' : `Оплатить ${book.price}₽`}
                   </button>
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Оплата будет выполнена через кнопку Telegram
+                  </p>
                 </div>
               </Dialog.Panel>
             </Transition.Child>

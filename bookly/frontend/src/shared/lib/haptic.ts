@@ -1,49 +1,54 @@
-// src/shared/lib/haptic.ts
+// frontend/src/shared/lib/haptic.ts
 
 import { tg } from './telegram-app';
 
-const haptic = {
-  light(): void {
+export const haptic = {
+  // Легкая вибрация (при навигации)
+  light: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.impactOccurred('light');
     }
   },
 
-  medium(): void {
+  // Средняя вибрация (при взаимодействии)
+  medium: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.impactOccurred('medium');
     }
   },
 
-  heavy(): void {
+  // Сильная вибрация (при важных действиях)
+  heavy: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.impactOccurred('heavy');
     }
   },
 
-  success(): void {
+  // Успешное действие
+  success: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.notificationOccurred('success');
     }
   },
 
-  warning(): void {
+  // Предупреждение
+  warning: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.notificationOccurred('warning');
     }
   },
 
-  error(): void {
+  // Ошибка
+  error: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.notificationOccurred('error');
     }
   },
 
-  selection(): void {
+  // Выбор (при нажатии на элемент)
+  selection: () => {
     if (tg?.HapticFeedback) {
       tg.HapticFeedback.selectionChanged();
     }
   },
 };
-
-export default haptic;
