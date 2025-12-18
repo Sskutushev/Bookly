@@ -40,39 +40,30 @@ const limiter = rateLimit({
 app.use(limiter);
 
 
-// Parse JSON bodies
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Manual CORS headers for all requests - simple approach
+// CORS middleware - this should be the very first middleware to handle all requests
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const origin = req.get('Origin');
-
-  // Allow all Vercel domains, localhost, and no origin (for direct server calls)
-  if (!origin ||
-      origin.includes('localhost') ||
-      origin.includes('vercel.app') ||
-      origin === 'https://web.telegram.org') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  } else {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-
+  // Always set these CORS headers regardless of the origin
+  res.header('Access-Control-Allow-Origin', '*');  // Allow all origins for testing
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
   res.header('Access-Control-Allow-Credentials', 'true');
 
   // Handle preflight OPTIONS requests immediately
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    res.sendStatus(200);
+    return;
   }
 
   next();
 });
 
+// Parse JSON bodies
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
 // Authentication & Guest Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
-  // If it's an OPTIONS request, skip authentication
+  // If it's an OPTIONS request, skip authentication (should not reach here due to CORS, but for safety)
   if (req.method === 'OPTIONS') {
     return next();
   }
