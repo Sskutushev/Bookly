@@ -3,9 +3,9 @@
 import axios from 'axios';
 import { tg } from '../lib/telegram-app';
 
-// Define the base URL depending on the environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:8080/api');
-
+// Define the base URL depending on the RUNTIME environment
+const isProd = window.location.hostname.includes('vercel.app');
+const API_BASE_URL = isProd ? '/api' : 'http://localhost:8080/api';
 
 // Create axios instance
 export const axiosInstance = axios.create({
