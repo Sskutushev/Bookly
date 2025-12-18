@@ -46,6 +46,7 @@ const allowedOrigins = [
   'https://bookly-bot.vercel.app',
   'https://bookly-bot-git-master.sskutushev.vercel.app', // Vercel preview deployment
   'https://sskutushev.github.io', // For GitHub Pages if needed
+  'https://*.vercel.app', // Pattern for all Vercel deployments
 ];
 
 const corsOptions: cors.CorsOptions = {
@@ -74,7 +75,9 @@ const corsOptions: cors.CorsOptions = {
   credentials: true,
   optionsSuccessStatus: 200,
   exposedHeaders: ['X-Total-Count', 'X-Requested-With'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Telegram-Init-Data', 'X-Guest-ID', 'X-Forwarded-For', 'X-Real-IP']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Telegram-Init-Data', 'X-Guest-ID', 'X-Forwarded-For', 'X-Real-IP'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  preflightContinue: true,
 };
 
 // Parse JSON bodies
@@ -86,6 +89,21 @@ app.use(cors(corsOptions));
 
 // Explicitly handle OPTIONS requests to ensure CORS preflight works correctly
 app.options('*', cors(corsOptions) as express.RequestHandler);
+
+// Global middleware to set CORS headers for all responses
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.get('Origin');
+  if (origin && (origin.includes('vercel.app') || origin.includes('localhost') || allowedOrigins.includes(origin))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // For requests without origin (like curl, mobile apps, etc.)
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
 // Authentication & Guest Middleware - applied after CORS
 app.use(jwtAuthMiddleware);
