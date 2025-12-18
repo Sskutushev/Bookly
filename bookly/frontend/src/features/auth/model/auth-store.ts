@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
         if (accessToken) {
           // Verify the token by fetching user data
-          const response = await axiosInstance.get('/user/profile');
+          const response = await axiosInstance.get('/api/user/profile');
           set({
             user: response.data,
             isAuthenticated: true,
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           if (tgInitData) {
             // Make a request to auth with Telegram
             const guestId = localStorage.getItem('guestId');
-            const response = await axiosInstance.post('/auth/telegram', {
+            const response = await axiosInstance.post('/api/auth/telegram', {
               initData: tgInitData,
               guestId: guestId || null,
             });
@@ -94,7 +94,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       try {
         // Verify the token by fetching user data
-        const response = await axiosInstance.get('/user/profile');
+        const response = await axiosInstance.get('/api/user/profile');
         set({
           user: response.data,
           isAuthenticated: true,
