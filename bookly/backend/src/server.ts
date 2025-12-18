@@ -71,6 +71,9 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Public routes (auth)
+app.use('/api/auth', authRoutes);
+
 // Authentication & Guest Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   // If it's an OPTIONS request, skip authentication (should not reach here due to CORS, but for safety)
@@ -94,8 +97,7 @@ app.get('/health', async (req: Request, res: Response) => {
   }
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
+// Protected Routes
 app.use('/api/books', booksRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/payment', paymentRoutes);
