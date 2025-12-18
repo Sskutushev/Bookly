@@ -39,60 +39,40 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// --- CORS Configuration ---
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://bookly-bot.vercel.app',
-  'https://bookly-bot-git-master.sskutushev.vercel.app', // Vercel preview deployment
-  'https://sskutushev.github.io', // For GitHub Pages if needed
-  'https://*.vercel.app', // Pattern for all Vercel deployments
-];
-
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // Check exact matches
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    // Check for Vercel subdomain pattern
-    if (origin.endsWith('.vercel.app')) {
-      callback(null, true);
-      return;
-    }
-
-    // Not allowed
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
-  exposedHeaders: ['X-Total-Count', 'X-Requested-With'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Telegram-Init-Data', 'X-Guest-ID', 'X-Forwarded-For', 'X-Real-IP'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  preflightContinue: true,
-};
 
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Enable CORS for all routes FIRST, before any other middleware
-app.use(cors(corsOptions));
-
-// Explicitly handle OPTIONS requests to ensure CORS preflight works correctly
-app.options('*', cors(corsOptions) as express.RequestHandler);
-
-// Authentication & Guest Middleware - applied after CORS but handled appropriately for OPTIONS
+// Manual CORS headers for all requests - simple approach
 app.use((req: Request, res: Response, next: NextFunction) => {
-  // If it's an OPTIONS request, skip authentication and proceed
+  const origin = req.get('Origin');
+
+  // Allow all Vercel domains, localhost, and no origin (for direct server calls)
+  if (!origin ||
+      origin.includes('localhost') ||
+      origin.includes('vercel.app') ||
+      origin === 'https://web.telegram.org') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  } else {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
+  res.header('Access-Control-Allow-Credentials', 'true');
+
+  // Handle preflight OPTIONS requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+// Authentication & Guest Middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // If it's an OPTIONS request, skip authentication
   if (req.method === 'OPTIONS') {
     return next();
   }
