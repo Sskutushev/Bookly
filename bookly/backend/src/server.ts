@@ -41,32 +41,17 @@ app.use(limiter);
 
 
 // CORS middleware
-const allowedOrigins = [
-  'https://bookly-bot.vercel.app',
-  'https://bookly-pied.vercel.app', // New frontend URL
-  'http://localhost:3000', // for local development
-  'http://127.0.0.1:3000' // for local development
-];
-
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+app.use(cors({
+  origin: [
+    "https://bookly-pied.vercel.app",
+    "https://bookly-backend.vercel.app"
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Telegram-Init-Data', 'X-Guest-ID', 'X-Forwarded-For', 'X-Real-IP'],
-};
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
-app.use(cors(corsOptions));
-
-// Handle preflight requests for all routes
-app.options('*', cors(corsOptions));
+app.options("*", cors());
 
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
