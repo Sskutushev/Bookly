@@ -4,17 +4,17 @@ import { axiosInstance } from '../../../shared/api/axios-instance';
 import { Book } from '../../../entities/book/model/types';
 
 export const getBookFragment = async (bookId: string): Promise<string> => {
-  const response = await axiosInstance.get(`/api/books/${bookId}/fragment`);
+  const response = await axiosInstance.get(`/books/${bookId}/fragment`);
   return response.data.fragment;
 };
 
 export const getMyBooks = async (): Promise<Book[]> => {
-  const response = await axiosInstance.get('/api/my-books');
+  const response = await axiosInstance.get('/my-books');
   return response.data;
 };
 
 export const getBookForReading = async (bookId: string): Promise<any> => {
-  const response = await axiosInstance.get(`/api/my-books/${bookId}/read`);
+  const response = await axiosInstance.get(`/my-books/${bookId}/read`);
   return response.data;
 };
 
@@ -23,7 +23,7 @@ export const updateReadingProgress = async (
   currentPage: number, 
   progress: number
 ): Promise<any> => {
-  const response = await axiosInstance.post(`/api/my-books/${bookId}/progress`, {
+  const response = await axiosInstance.post(`/my-books/${bookId}/progress`, {
     currentPage,
     progress,
   });
@@ -31,21 +31,21 @@ export const updateReadingProgress = async (
 };
 
 export const getReadingProgress = async (bookId: string): Promise<any> => {
-  const response = await axiosInstance.get(`/api/my-books/${bookId}/progress`);
+  const response = await axiosInstance.get(`/my-books/${bookId}/progress`);
   return response.data;
 };
 
 export const fetchBookContent = async (bookId: string): Promise<string> => {
-  const response = await axiosInstance.get(`/api/books/${bookId}/content`);
+  const response = await axiosInstance.get(`/books/${bookId}/content`);
   return response.data;
 };
 
 export const addBookToMyBooks = async (bookId: string): Promise<any> => {
-  const response = await axiosInstance.post(`/api/my-books/${bookId}/add`);
+  const response = await axiosInstance.post(`/my-books/${bookId}/add`);
   return response.data;
 };
 
 export const deleteBookFromLibrary = async (bookId: string): Promise<any> => {
-  const response = await axiosInstance.delete(`/api/my-books/${bookId}`);
+  const response = await axiosInstance.delete(`/my-books/${bookId}`);
   return response.data;
 };
