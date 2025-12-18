@@ -81,10 +81,10 @@ const corsOptions: cors.CorsOptions = {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Enable CORS for all routes before authentication
+// Enable CORS for all routes
 app.use(cors(corsOptions));
 
-// Special handling for preflight requests
+// Explicitly handle OPTIONS requests to ensure CORS preflight works correctly
 app.options('*', cors(corsOptions) as express.RequestHandler);
 
 // Authentication & Guest Middleware - applied after CORS
