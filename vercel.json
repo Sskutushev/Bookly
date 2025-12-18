@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "bookly/frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    },
+    {
+      "src": "bookly/backend/src/server.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "bookly/telegram-bot/api/webhook.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/bot/webhook",
+      "destination": "/bookly/telegram-bot/api/webhook.py"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/bookly/backend/src/server.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/bookly/frontend/index.html"
+    }
+  ]
+}
