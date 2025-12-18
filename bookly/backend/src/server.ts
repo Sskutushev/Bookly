@@ -84,9 +84,15 @@ const corsOptions: cors.CorsOptions = {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Authentication & Guest Middleware - applied before CORS but handled appropriately for OPTIONS
+// Enable CORS for all routes FIRST, before any other middleware
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS requests to ensure CORS preflight works correctly
+app.options('*', cors(corsOptions) as express.RequestHandler);
+
+// Authentication & Guest Middleware - applied after CORS but handled appropriately for OPTIONS
 app.use((req: Request, res: Response, next: NextFunction) => {
-  // If it's an OPTIONS request, skip authentication and proceed with CORS
+  // If it's an OPTIONS request, skip authentication and proceed
   if (req.method === 'OPTIONS') {
     return next();
   }
@@ -96,12 +102,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     guestOrAuthMiddleware(req, res, next);
   });
 });
-
-// Enable CORS for all routes
-app.use(cors(corsOptions));
-
-// Explicitly handle OPTIONS requests to ensure CORS preflight works correctly
-app.options('*', cors(corsOptions) as express.RequestHandler);
 
 // Database connection check
 app.get('/health', async (req: Request, res: Response) => {
