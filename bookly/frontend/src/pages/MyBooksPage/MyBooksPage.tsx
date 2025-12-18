@@ -120,27 +120,27 @@ const MyBooksPage: React.FC = () => {
       {/* Books Grid */}
       <div className="container mx-auto px-4 pb-20">
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {[...Array(6)].map((_, index) => (
               <div
                 key={index}
-                className="bg-white dark:bg-gray-800 rounded-card shadow p-4 animate-pulse"
+                className="bg-white dark:bg-gray-800 rounded-card shadow p-3 animate-pulse"
               >
-                <div className="bg-gray-200 dark:bg-gray-700 h-48 rounded mb-3 relative">
-                  <div className="absolute bottom-2 left-2 right-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full">
+                <div className="bg-gray-200 dark:bg-gray-700 rounded mb-2 aspect-[3/4] max-w-[120px] relative">
+                  <div className="absolute bottom-1 left-1 right-1 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full">
                     <div
                       className="h-full bg-primary-light dark:bg-primary-dark rounded-full"
                       style={{ width: '60%' }}
                     ></div>
                   </div>
                 </div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
               </div>
             ))}
           </div>
         ) : filteredBooks.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {filteredBooks.map((book, index) => (
               <motion.div
                 key={book.id}
@@ -148,6 +148,7 @@ const MyBooksPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={() => handleBookClick(book)}
+                className="flex justify-center" // Center align the cards
               >
                 <BookCard
                   book={book}

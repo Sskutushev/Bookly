@@ -103,20 +103,20 @@ const FavoritesPage: React.FC = () => {
       {/* Books Grid */}
       <div className="container mx-auto px-4 pb-20">
         {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {[...Array(6)].map((_, index) => (
-              <div 
-                key={index} 
-                className="bg-white dark:bg-gray-800 rounded-card shadow p-4 animate-pulse"
+              <div
+                key={index}
+                className="bg-white dark:bg-gray-800 rounded-card shadow p-3 animate-pulse"
               >
-                <div className="bg-gray-200 dark:bg-gray-700 h-48 rounded mb-3"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="bg-gray-200 dark:bg-gray-700 rounded mb-2 aspect-[3/4] max-w-[120px]"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
               </div>
             ))}
           </div>
         ) : books.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {books.map((book, index) => (
               <motion.div
                 key={book.id}
@@ -124,6 +124,7 @@ const FavoritesPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
                 onClick={() => handleBookClick(book)}
+                className="flex justify-center" // Center align the cards
               >
                 <BookCard book={book} />
               </motion.div>
@@ -138,7 +139,7 @@ const FavoritesPage: React.FC = () => {
             <p className="text-text-secondary-light dark:text-text-secondary-dark mb-4">
               Добавляйте книги в избранное
             </p>
-            <button 
+            <button
               className="px-4 py-2 bg-primary-light dark:bg-primary-dark text-white rounded-button"
               onClick={() => window.history.back()}
             >

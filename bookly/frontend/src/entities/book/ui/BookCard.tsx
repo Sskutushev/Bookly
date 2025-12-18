@@ -85,35 +85,35 @@ const BookCard: React.FC<BookCardProps> = ({
   ];
 
   return (
-    <div ref={cardRef}>
+    <div ref={cardRef} className="flex-shrink-0">
       <motion.div
-        className="bg-white dark:bg-gray-800 rounded-card shadow overflow-hidden relative group"
+        className="bg-white dark:bg-gray-800 rounded-card shadow overflow-hidden relative group w-full"
         whileHover={{ y: -5, scale: 1.03 }}
         transition={{ duration: 0.2 }}
         {...longPressEvent}
         onContextMenu={handleContextMenu}
       >
-        <div className="relative">
+        <div className="relative aspect-[3/4] max-w-[120px]"> {/* Fixed aspect ratio and max-width for smaller mobile size */}
           <img
             src={import.meta.env.VITE_API_BASE_URL + book.coverUrl}
             alt={book.title}
-            className="w-full h-48 object-cover"
+            className="w-full h-full object-cover"
           />
 
           {/* Price Badge */}
           {book.price > 0 ? (
-            <div className="absolute top-2 right-2 bg-accent-light dark:bg-accent-dark text-text-primary-dark px-2 py-1 rounded-element text-xs font-bold">
+            <div className="absolute top-1 right-1 bg-accent-light dark:bg-accent-dark text-text-primary-dark px-1.5 py-0.5 rounded-element text-xs font-bold">
               {book.price}₽
             </div>
           ) : (
-            <div className="absolute top-2 right-2 bg-secondary-light dark:bg-secondary-dark text-white px-2 py-1 rounded-element text-xs font-bold">
+            <div className="absolute top-1 right-1 bg-secondary-light dark:bg-secondary-dark text-white px-1.5 py-0.5 rounded-element text-xs font-bold">
               Бесплатно
             </div>
           )}
 
           {/* Favorite Button */}
           <button
-            className="absolute top-2 left-2 bg-white/80 dark:bg-gray-700/80 p-1.5 rounded-full"
+            className="absolute top-1 left-1 bg-white/80 dark:bg-gray-700/80 p-1 rounded-full"
             onClick={(e) => {
               e.stopPropagation();
               if (book.isFavorite) {
@@ -125,7 +125,7 @@ const BookCard: React.FC<BookCardProps> = ({
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className={`h-5 w-5 ${book.isFavorite ? 'text-red-500' : 'text-gray-500'}`}
+              className={`h-4 w-4 ${book.isFavorite ? 'text-red-500' : 'text-gray-500'}`}
               fill={book.isFavorite ? "currentColor" : "none"}
               viewBox="0 0 24 24"
               stroke={book.isFavorite ? "none" : "currentColor"}
@@ -140,11 +140,11 @@ const BookCard: React.FC<BookCardProps> = ({
           </button>
         </div>
 
-        <div className="p-3">
-          <h3 className="font-semibold text-text-primary-light dark:text-text-primary-dark truncate">
+        <div className="p-2">
+          <h3 className="font-semibold text-text-primary-light dark:text-text-primary-dark truncate text-sm">
             {book.title}
           </h3>
-          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark truncate">
+          <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">
             {book.author}
           </p>
         </div>
