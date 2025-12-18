@@ -121,7 +121,7 @@ const BookmarkManager: React.FC<BookmarkManagerProps> = ({
                   as="h3"
                   className="text-lg font-medium leading-6 text-text-primary-light dark:text-text-primary-dark mb-4"
                 >
-                  Закладки
+                  Закладки - {bookTitle}
                 </Dialog.Title>
 
                 <div className="mt-2">
