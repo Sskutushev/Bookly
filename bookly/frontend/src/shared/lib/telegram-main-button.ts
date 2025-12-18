@@ -3,11 +3,18 @@
 import { tg } from './telegram-app';
 
 export class TelegramMainButton {
+  private currentClickHandler: (() => void) | null = null;
+
   show(text: string, onClick: () => void) {
     if (tg && tg.MainButton) {
       tg.MainButton.setText(text);
       tg.MainButton.show();
+      // Remove the previous handler before adding a new one
+      if (this.currentClickHandler) {
+        tg.MainButton.offClick(this.currentClickHandler);
+      }
       tg.MainButton.onClick(onClick);
+      this.currentClickHandler = onClick;
 
       // Haptic feedback when button is shown
       if (tg.HapticFeedback) {
@@ -21,7 +28,10 @@ export class TelegramMainButton {
   hide() {
     if (tg && tg.MainButton) {
       tg.MainButton.hide();
-      tg.MainButton.offClick();
+      if (this.currentClickHandler) {
+        tg.MainButton.offClick(this.currentClickHandler);
+        this.currentClickHandler = null;
+      }
     } else {
       console.warn('Telegram MainButton is not available');
     }

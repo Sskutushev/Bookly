@@ -31,6 +31,7 @@ const BookmarkManager: React.FC<BookmarkManagerProps> = ({
   bookTitle,
   currentPage,
   currentChapter,
+  onGoToBookmark,
 }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [newBookmarkTitle, setNewBookmarkTitle] = useState('');
