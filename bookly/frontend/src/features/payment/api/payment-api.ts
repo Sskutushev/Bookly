@@ -2,7 +2,7 @@
 import { axiosInstance } from '@/shared/api/axios-instance';
 
 export const createInvoice = async (bookId: string): Promise<string> => {
-  const response = await axiosInstance.post('/payment/create-invoice', {
+  const response = await axiosInstance.post('/api/payment/create-invoice', {
     bookId,
     // In a real app, we'd also pass userId from auth context
   });
@@ -10,22 +10,22 @@ export const createInvoice = async (bookId: string): Promise<string> => {
 };
 
 export const createYookassaPayment = async (bookId: string) => {
-  const response = await axiosInstance.post('/payment/create-yookassa', { bookId });
+  const response = await axiosInstance.post('/api/payment/create-yookassa', { bookId });
   return response.data;
 };
 
 export const createUsdtTonPayment = async (bookId: string) => {
-  const response = await axiosInstance.post('/payment/create-usdt-ton', { bookId });
+  const response = await axiosInstance.post('/api/payment/create-usdt-ton', { bookId });
   return response.data;
 };
 
 export const createUsdtTrc20Payment = async (bookId: string) => {
-  const response = await axiosInstance.post('/payment/create-usdt-trc20', { bookId });
+  const response = await axiosInstance.post('/api/payment/create-usdt-trc20', { bookId });
   return response.data;
 };
 
 export const verifyUsdtPayment = async (address: string, network: string, bookId: string, userId: string) => {
-  const response = await axiosInstance.post('/payment/verify-usdt', {
+  const response = await axiosInstance.post('/api/payment/verify-usdt', {
     address,
     network,
     bookId,
@@ -35,7 +35,7 @@ export const verifyUsdtPayment = async (address: string, network: string, bookId
 };
 
 export const verifyPayment = async (transactionId: string): Promise<boolean> => {
-  const response = await axiosInstance.post('/payment/verify', { transactionId });
+  const response = await axiosInstance.post('/api/payment/verify', { transactionId });
   return response.data.verified;
 };
 
