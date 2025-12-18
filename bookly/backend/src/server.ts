@@ -84,30 +84,24 @@ const corsOptions: cors.CorsOptions = {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Authentication & Guest Middleware - applied before CORS but handled appropriately for OPTIONS
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // If it's an OPTIONS request, skip authentication and proceed with CORS
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
+  // Otherwise, apply authentication
+  jwtAuthMiddleware(req, res, () => {
+    guestOrAuthMiddleware(req, res, next);
+  });
+});
+
 // Enable CORS for all routes
 app.use(cors(corsOptions));
 
 // Explicitly handle OPTIONS requests to ensure CORS preflight works correctly
 app.options('*', cors(corsOptions) as express.RequestHandler);
-
-// Global middleware to set CORS headers for all responses
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const origin = req.get('Origin');
-  if (origin && (origin.includes('vercel.app') || origin.includes('localhost') || allowedOrigins.includes(origin))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    // For requests without origin (like curl, mobile apps, etc.)
-    res.header('Access-Control-Allow-Origin', '*');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
-
-// Authentication & Guest Middleware - applied after CORS
-app.use(jwtAuthMiddleware);
-app.use(guestOrAuthMiddleware);
 
 // Database connection check
 app.get('/health', async (req: Request, res: Response) => {
