@@ -40,22 +40,32 @@ const limiter = rateLimit({
 app.use(limiter);
 
 
-// CORS middleware - this should be the very first middleware to handle all requests
-app.use((req: Request, res: Response, next: NextFunction) => {
-  // Always set these CORS headers regardless of the origin
-  res.header('Access-Control-Allow-Origin', '*');  // Allow all origins for testing
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
-  res.header('Access-Control-Allow-Credentials', 'true');
+// CORS middleware
+const allowedOrigins = [
+  'https://bookly-bot.vercel.app',
+  'http://localhost:3000', // for local development
+  'http://127.0.0.1:3000' // for local development
+];
 
-  // Handle preflight OPTIONS requests immediately
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-    return;
-  }
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'X-Telegram-Init-Data', 'X-Guest-ID', 'X-Forwarded-For', 'X-Real-IP'],
+};
 
-  next();
-});
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 // Parse JSON bodies
 app.use(express.json({ limit: '10mb' }));
