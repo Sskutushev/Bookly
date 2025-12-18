@@ -3,13 +3,9 @@
 import axios from 'axios';
 import { tg } from '../lib/telegram-app';
 
-// Define the base URL depending on the RUNTIME environment
-const isProd = window.location.hostname.includes('vercel.app');
-const API_BASE_URL = isProd ? '/api' : 'http://localhost:8080/api';
-
 // Create axios instance
 export const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -56,7 +52,7 @@ axiosInstance.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const response = await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
+            `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/refresh`,
             { refreshToken }
           );
           

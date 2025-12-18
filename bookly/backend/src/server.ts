@@ -43,6 +43,7 @@ app.use(limiter);
 // CORS middleware
 const allowedOrigins = [
   'https://bookly-bot.vercel.app',
+  'https://bookly-pied.vercel.app', // New frontend URL
   'http://localhost:3000', // for local development
   'http://127.0.0.1:3000' // for local development
 ];
