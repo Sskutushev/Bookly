@@ -45,6 +45,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://bookly-bot.vercel.app',
   'https://bookly-bot-git-master.sskutushev.vercel.app', // Vercel preview deployment
+  'https://sskutushev.github.io', // For GitHub Pages if needed
 ];
 
 const corsOptions: cors.CorsOptions = {
@@ -80,29 +81,15 @@ const corsOptions: cors.CorsOptions = {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Special handling for preflight requests before authentication
-app.options('*', (req: Request, res: Response) => {
-  // Set CORS headers for preflight
-  if (!req.header('origin')) {
-    res.status(200).send();
-    return;
-  }
-
-  const origin = req.header('origin');
-  if (origin && (origin.includes('vercel.app') || origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  } else {
-    res.header('Access-Control-Allow-Origin', 'https://web.telegram.org');
-  }
-
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Telegram-Init-Data, X-Guest-ID, X-Forwarded-For, X-Real-IP');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
-
 // Enable CORS for all routes before authentication
 app.use(cors(corsOptions));
+
+// Special handling for preflight requests
+app.options('*', cors(corsOptions) as express.RequestHandler);
+
+// Authentication & Guest Middleware - applied after CORS
+app.use(jwtAuthMiddleware);
+app.use(guestOrAuthMiddleware);
 
 // Database connection check
 app.get('/health', async (req: Request, res: Response) => {
@@ -113,10 +100,6 @@ app.get('/health', async (req: Request, res: Response) => {
     res.status(500).json({ status: 'ERROR', message: 'Database connection failed' });
   }
 });
-
-// Authentication & Guest Middleware - applied after CORS
-app.use(jwtAuthMiddleware);
-app.use(guestOrAuthMiddleware);
 
 // Routes
 app.use('/api/auth', authRoutes);
