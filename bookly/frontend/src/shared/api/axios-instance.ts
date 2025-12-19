@@ -3,9 +3,13 @@
 import axios from 'axios';
 import { tg } from '../lib/telegram-app';
 
+// LAST RESORT: Hardcoding the production URL to bypass Vercel environment variable issues.
+const PROD_BACKEND_URL = 'https://bookly-p7vz.onrender.com';
+const LOCAL_BACKEND_URL = 'http://localhost:8080';
+
 // Create axios instance
 export const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.PROD ? PROD_BACKEND_URL : LOCAL_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,7 +56,7 @@ axiosInstance.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           const response = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/refresh`,
+            `${import.meta.env.PROD ? PROD_BACKEND_URL : LOCAL_BACKEND_URL}/api/auth/refresh`,
             { refreshToken }
           );
           
