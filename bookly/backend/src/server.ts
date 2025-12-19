@@ -53,8 +53,10 @@ const allowedOrigins = [
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     console.log('Incoming Origin:', origin); // Log the incoming origin for debugging
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin or a literal "undefined" origin
+    if (!origin || origin === "undefined") {
+      return callback(null, true);
+    }
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
