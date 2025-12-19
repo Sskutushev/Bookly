@@ -29,7 +29,7 @@ const app = express();
 const prisma = new PrismaClient();
 
 // Serve static files from the uploads directory, making covers and books available.
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Security middleware
 app.use(helmet());
