@@ -1,3 +1,4 @@
+// Using Neon DB via connection string in .env
 // Environment variables are loaded from the .env file in the root of the backend directory
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
