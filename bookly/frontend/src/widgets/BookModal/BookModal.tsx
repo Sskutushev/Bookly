@@ -20,10 +20,15 @@ interface BookModalProps {
   onBookAdded: (bookId: string) => void;
 }
 
+const PROD_BACKEND_URL = 'https://bookly-p7vz.onrender.com';
+const LOCAL_BACKEND_URL = 'http://localhost:8080';
+const coverBaseUrl = import.meta.env.PROD ? PROD_BACKEND_URL : LOCAL_BACKEND_URL;
+
 const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const imageUrl = `${coverBaseUrl}/${book.coverUrl.replace(/^\//, '')}`;
   
   const favoriteMutation = useMutation({
     mutationFn: async () => {
@@ -116,7 +121,7 @@ const BookModal: React.FC<BookModalProps> = ({ book, onClose, onBookAdded }) => 
                   <div className="mt-4 flex flex-col md:flex-row gap-4">
                     <div className="flex-shrink-0">
                       <img
-                        src={import.meta.env.VITE_API_BASE_URL + book.coverUrl}
+                        src={imageUrl}
                         alt={book.title}
                         className="w-40 h-56 object-cover rounded-card"
                       />

@@ -13,6 +13,10 @@ interface BookCardProps {
   onDeleteFromLibrary?: (bookId: string) => void;
 }
 
+const PROD_BACKEND_URL = 'https://bookly-p7vz.onrender.com';
+const LOCAL_BACKEND_URL = 'http://localhost:8080';
+const coverBaseUrl = import.meta.env.PROD ? PROD_BACKEND_URL : LOCAL_BACKEND_URL;
+
 const BookCard: React.FC<BookCardProps> = ({
   book,
   onAddToFavorite,
@@ -95,7 +99,7 @@ const BookCard: React.FC<BookCardProps> = ({
       >
         <div className="relative aspect-[3/4] max-w-[120px]"> {/* Fixed aspect ratio and max-width for smaller mobile size */}
           <img
-            src={import.meta.env.VITE_API_BASE_URL + book.coverUrl}
+            src={`${coverBaseUrl}/${book.coverUrl}`}
             alt={book.title}
             className="w-full h-full object-cover"
           />
